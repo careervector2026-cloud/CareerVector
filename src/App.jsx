@@ -1,8 +1,10 @@
 import React from 'react'
-
+import MainRouter from './routes/MainRouter'
 const App = () => {
   return (
-    <div>App</div>
+    <>
+      <MainRouter></MainRouter>
+    </>
   )
 }
 
