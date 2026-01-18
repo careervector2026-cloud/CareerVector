@@ -8,3 +8,4 @@ const MainRouter = () => {
     </Routes>
   )
 }
+export default MainRouter
