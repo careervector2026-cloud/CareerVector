@@ -1,6 +1,6 @@
 import React from 'react'
 import { Routes,Route } from 'react-router-dom'
-import Index from "../pages/Index"
+import Index from "../pages/Index.jsx"
 const MainRouter = () => {
   return (
     <Routes>
