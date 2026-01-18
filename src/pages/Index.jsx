@@ -10,6 +10,7 @@ const Index = () => {
           <div className='flex gap-5'>
             <button onClick={()=>navigate("/student/login")}>Student</button>
             <button onClick={()=>navigate("/recruiter/login")}>Recruiter</button>
+            <button onClick={()=>navigate("/admin/login")}>Admin</button>
           </div>
         </div>
     </div>
