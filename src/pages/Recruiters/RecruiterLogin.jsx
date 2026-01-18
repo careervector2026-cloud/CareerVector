@@ -1,9 +1,7 @@
 import React from 'react'
 
-const RecruiterLogin = () => {
+export const RecruiterLogin = () => {
   return (
     <div>RecruiterLogin</div>
   )
 }
-
-export default RecruiterLogin
