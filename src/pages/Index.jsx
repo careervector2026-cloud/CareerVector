@@ -8,8 +8,8 @@ const Index = () => {
         <div className="flex flex-col justify-center items-center gap-5h-75 w-75 bg-gray-200">
           <div>CareerVortex</div>
           <div className='flex gap-5'>
-            <button onClick={navigate("/student/login")}>Student</button>
-            <button onClick={navigate("/recruiter/login")}>Recruiter</button>
+            <button onClick={()=>navigate("/student/login")}>Student</button>
+            <button onClick={()=>navigate("/recruiter/login")}>Recruiter</button>
           </div>
         </div>
     </div>
