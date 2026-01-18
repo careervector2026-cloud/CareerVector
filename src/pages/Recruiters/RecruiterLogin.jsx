@@ -5,3 +5,5 @@ export const RecruiterLogin = () => {
     <div>RecruiterLogin</div>
   )
 }
+
+export default RecruiterLogin;
