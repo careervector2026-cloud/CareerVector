@@ -12,7 +12,7 @@ const RecruiterLogin = () => {
   const { loading, error, isAuthenticated } = useSelector((state) => state.recruiter);
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/recruiter/dashboard");
+    if (isAuthenticated) navigate("/recruiter/home");
     return () => { dispatch(clearRecruiterErrors()); };
   }, [isAuthenticated, navigate, dispatch]);
 

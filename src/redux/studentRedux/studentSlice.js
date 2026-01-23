@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axiosInstance from "../../config/AxiosConfig";
+import axiosInstance from "../../config/AxiosConfig"; 
 
 // Helper to load from Session Storage
 const loadFromStorage = () => {
@@ -12,38 +12,34 @@ const loadFromStorage = () => {
 
 // --- Async Thunks ---
 
-// 1. Send OTP (New)
+// 1. Send OTP (New Action)
 export const sendOtp = createAsyncThunk(
   "student/sendOtp",
   async (email, { rejectWithValue }) => {
     try {
-      // Backend expects: { "email": "..." }
       const response = await axiosInstance.post("/api/student/send-otp", { email });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send OTP. Please try again."
+        error.response?.data || "Failed to send OTP. Please try again."
       );
     }
   }
 );
 
-// 2. Signup (Verify OTP + Upload Data)
+// 2. Signup (Updated to handle Multipart data)
 export const signupUser = createAsyncThunk(
   "student/signup",
   async (formData, { rejectWithValue }) => {
     try {
-      const config = {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      };
-      // formData includes fields + 'otp' + files
-      const response = await axiosInstance.post("/api/student/signup", formData, config);
+      // Axios automatically handles multipart boundaries when passed FormData
+      const response = await axiosInstance.post("/api/student/signup", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Signup failed. Check OTP or connection."
+        error.response?.data || "Signup failed. Check OTP or connection."
       );
     }
   }
@@ -58,7 +54,7 @@ export const loginUser = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Login failed. Please try again."
+        error.response?.data || "Login failed. Please check your credentials."
       );
     }
   }
@@ -70,7 +66,7 @@ const initialState = {
   loading: false,
   error: null,
   successMessage: null,
-  otpSent: false, // Controls UI switch in Signup
+  otpSent: false, // New State: Controls the UI switch
 };
 
 const studentSlice = createSlice({
@@ -90,7 +86,7 @@ const studentSlice = createSlice({
       state.error = null;
       state.successMessage = null;
     },
-    // Reset signup state if user navigates away
+    // New Reducer: Resets the flow if user goes back
     resetSignupFlow: (state) => {
       state.otpSent = false;
       state.error = null;
@@ -100,14 +96,14 @@ const studentSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // --- Send OTP ---
+      // --- Send OTP Handlers ---
       .addCase(sendOtp.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(sendOtp.fulfilled, (state) => {
         state.loading = false;
-        state.otpSent = true;
+        state.otpSent = true; // Triggers UI to show OTP input
         state.error = null;
       })
       .addCase(sendOtp.rejected, (state, action) => {
@@ -115,7 +111,7 @@ const studentSlice = createSlice({
         state.error = action.payload;
       })
 
-      // --- Signup (Verify & Save) ---
+      // --- Signup Handlers ---
       .addCase(signupUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -131,7 +127,7 @@ const studentSlice = createSlice({
         state.error = action.payload;
       })
 
-      // --- Login ---
+      // --- Login Handlers ---
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;

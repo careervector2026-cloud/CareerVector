@@ -7,9 +7,12 @@ import { loginUser, clearErrors } from "../../redux/studentRedux/studentSlice";
 const StudentLogin = () => {
   const [step, setStep] = useState("login"); // login | forgot | reset
   
-  // Form States
-  const [email, setEmail] = useState("");
+  // Login Form State
+  const [identifier, setIdentifier] = useState(""); // Can be Email OR Username
   const [password, setPassword] = useState("");
+  
+  // Password Reset State
+  const [resetEmail, setResetEmail] = useState(""); 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -30,14 +33,15 @@ const StudentLogin = () => {
   // --- Login Handler ---
   const handleLogin = (e) => {
     e.preventDefault();
-    dispatch(loginUser({ email, password }));
+    // Send 'emailOrUsername' to match Backend DTO
+    dispatch(loginUser({ emailOrUsername: identifier, password }));
   };
 
-  // --- Password Reset (Optional, kept from your previous code) ---
+  // --- Password Reset Handlers ---
   const handleCheckEmail = async (e) => {
     e.preventDefault();
     try {
-      await axiosInstance.post("/api/student/check-email", { email });
+      await axiosInstance.post("/api/student/check-email", { email: resetEmail });
       setStep("reset");
     } catch (err) {
       alert(err.response?.data?.message || "Email not found");
@@ -49,7 +53,7 @@ const StudentLogin = () => {
     if (newPassword !== confirmPassword) return alert("Passwords do not match");
     
     try {
-      await axiosInstance.post("/api/student/reset-password", { email, newPassword });
+      await axiosInstance.post("/api/student/reset-password", { email: resetEmail, newPassword });
       alert("Password reset successful. Please login.");
       setStep("login");
     } catch (err) {
@@ -75,7 +79,7 @@ const StudentLogin = () => {
         {/* Right Side: Glass Card */}
         <div className="flex-1 w-full max-w-md bg-white/10 backdrop-blur-md border border-white/20 p-8 rounded-2xl shadow-2xl">
           
-          {/* LOGIN FORM */}
+          {/* --- LOGIN FORM --- */}
           {step === "login" && (
             <form onSubmit={handleLogin} className="flex flex-col gap-5">
               <h2 className="text-2xl font-bold text-white">Student Login</h2>
@@ -86,15 +90,17 @@ const StudentLogin = () => {
                 </div>
               )}
 
+              {/* INPUT 1: Email OR Username */}
               <input
-                type="email"
-                placeholder="Email"
+                type="text" 
+                placeholder="Email or Username"
                 className="w-full p-3.5 rounded-xl border border-white/25 bg-white/10 text-white placeholder-gray-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
               />
 
+              {/* INPUT 2: Password */}
               <input
                 type="password"
                 placeholder="Password"
@@ -131,7 +137,7 @@ const StudentLogin = () => {
             </form>
           )}
 
-          {/* VERIFY EMAIL FORM (Forgot Password) */}
+          {/* --- VERIFY EMAIL FORM (Forgot Password) --- */}
           {step === "forgot" && (
             <form onSubmit={handleCheckEmail} className="flex flex-col gap-5">
               <h2 className="text-2xl font-bold">Verify Email</h2>
@@ -139,8 +145,8 @@ const StudentLogin = () => {
                 type="email"
                 placeholder="Enter registered email"
                 className="w-full p-3.5 rounded-xl border border-white/25 bg-white/10 text-white placeholder-gray-300 outline-none focus:border-blue-400"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
                 required
               />
               <button className="w-full p-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 hover:opacity-90 font-semibold transition-all">
@@ -152,7 +158,7 @@ const StudentLogin = () => {
             </form>
           )}
 
-          {/* RESET PASSWORD FORM */}
+          {/* --- RESET PASSWORD FORM --- */}
           {step === "reset" && (
             <form onSubmit={handleResetPassword} className="flex flex-col gap-5">
               <h2 className="text-2xl font-bold">Reset Password</h2>
@@ -177,6 +183,7 @@ const StudentLogin = () => {
               </button>
             </form>
           )}
+
         </div>
       </div>
     </div>
