@@ -1,251 +1,186 @@
-import React, { useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
+import axiosInstance from "../../config/AxiosConfig"; 
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { loginUser, clearErrors } from "../../redux/studentRedux/studentSlice";
 
 const StudentLogin = () => {
-  const [step, setStep] = useState("login"); 
+  const [step, setStep] = useState("login"); // login | forgot | reset
+  
+  // Form States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Access Redux State
+  const { loading, error, isAuthenticated } = useSelector((state) => state.student);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/student/home");
+    }
+    return () => { dispatch(clearErrors()); };
+  }, [isAuthenticated, navigate, dispatch]);
+
+  // --- Login Handler ---
   const handleLogin = (e) => {
     e.preventDefault();
-    localStorage.setItem("careerVectorUser", JSON.stringify({ email }));
-    window.location.href = "/student/home";
+    dispatch(loginUser({ email, password }));
   };
 
-  const handleSignup = () => {
-    // Navigate to your signup route here
-    window.location.href = "/student/signup";
-  };
-
+  // --- Password Reset (Optional, kept from your previous code) ---
   const handleCheckEmail = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/student/check-email", { email });
-      setStep("reset"); 
-    } catch {
-      alert("Email not found in database");
+      await axiosInstance.post("/api/student/check-email", { email });
+      setStep("reset");
+    } catch (err) {
+      alert(err.response?.data?.message || "Email not found");
     }
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
+    if (newPassword !== confirmPassword) return alert("Passwords do not match");
+    
     try {
-      await axios.post("http://localhost:5000/api/student/reset-password", {
-        email,
-        newPassword,
-      });
+      await axiosInstance.post("/api/student/reset-password", { email, newPassword });
       alert("Password reset successful. Please login.");
       setStep("login");
-    } catch {
-      alert("Failed to reset password");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to reset password");
     }
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.glowBlue}></div>
-      <div style={styles.glowPurple}></div>
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center relative overflow-hidden text-white font-sans">
+      
+      {/* Background Glow Effects */}
+      <div className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-blue-500/35 rounded-full blur-[120px]" />
+      <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] bg-purple-500/35 rounded-full blur-[120px]" />
 
-      <div style={styles.content}>
-        <div style={styles.leftText}>
-          <h1 style={styles.brand}>CareerVector</h1>
-          <p style={styles.tagline}>Your smart placement companion</p>
+      <div className="relative z-10 w-[90%] max-w-4xl flex flex-col md:flex-row justify-between gap-10 items-center">
+        
+        {/* Left Side: Branding */}
+        <div className="flex-1 text-center md:text-left">
+          <h1 className="text-5xl font-extrabold mb-2 tracking-tight">CareerVector</h1>
+          <p className="text-lg text-indigo-200">Your smart placement companion</p>
         </div>
 
-        {/* LOGIN */}
-        {step === "login" && (
-          <form onSubmit={handleLogin} style={styles.form}>
-            <h2 style={styles.formTitle}>Student Login</h2>
+        {/* Right Side: Glass Card */}
+        <div className="flex-1 w-full max-w-md bg-white/10 backdrop-blur-md border border-white/20 p-8 rounded-2xl shadow-2xl">
+          
+          {/* LOGIN FORM */}
+          {step === "login" && (
+            <form onSubmit={handleLogin} className="flex flex-col gap-5">
+              <h2 className="text-2xl font-bold text-white">Student Login</h2>
 
-            <input
-              type="email"
-              placeholder="Email"
-              style={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+              {error && (
+                <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-lg text-sm text-center">
+                  {typeof error === 'string' ? error : "Login Failed"}
+                </div>
+              )}
 
-            <input
-              type="password"
-              placeholder="Password"
-              style={styles.input}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+              <input
+                type="email"
+                placeholder="Email"
+                className="w-full p-3.5 rounded-xl border border-white/25 bg-white/10 text-white placeholder-gray-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
 
-            <button style={styles.button}>Login</button>
+              <input
+                type="password"
+                placeholder="Password"
+                className="w-full p-3.5 rounded-xl border border-white/25 bg-white/10 text-white placeholder-gray-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
 
-            <div style={styles.footerLinks}>
-              <p style={styles.forgot} onClick={() => setStep("forgot")}>
-                Forgot password?
+              <button 
+                className="w-full p-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white font-semibold shadow-lg transform active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                {loading ? "Logging in..." : "Login"}
+              </button>
+
+              <div className="flex flex-col items-center gap-2 mt-2">
+                <p 
+                  className="text-sm text-blue-300 hover:text-blue-200 cursor-pointer transition-colors"
+                  onClick={() => setStep("forgot")}
+                >
+                  Forgot password?
+                </p>
+                <p className="text-sm text-slate-300">
+                  Don't have an account?{" "}
+                  <span 
+                    className="font-bold text-white underline cursor-pointer hover:text-blue-200 ml-1"
+                    onClick={() => navigate("/student/signup")}
+                  >
+                    Sign Up
+                  </span>
+                </p>
+              </div>
+            </form>
+          )}
+
+          {/* VERIFY EMAIL FORM (Forgot Password) */}
+          {step === "forgot" && (
+            <form onSubmit={handleCheckEmail} className="flex flex-col gap-5">
+              <h2 className="text-2xl font-bold">Verify Email</h2>
+              <input
+                type="email"
+                placeholder="Enter registered email"
+                className="w-full p-3.5 rounded-xl border border-white/25 bg-white/10 text-white placeholder-gray-300 outline-none focus:border-blue-400"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <button className="w-full p-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 hover:opacity-90 font-semibold transition-all">
+                Continue
+              </button>
+              <p className="text-center text-sm text-blue-300 cursor-pointer hover:text-white" onClick={() => setStep("login")}>
+                Back to login
               </p>
-              
-              {/* --- ADDED SIGN UP SECTION HERE --- */}
-              <p style={styles.signupText}>
-                Don't have an account?{" "}
-                <span style={styles.signupLink} onClick={handleSignup}>
-                  Sign Up
-                </span>
-              </p>
-            </div>
-          </form>
-        )}
+            </form>
+          )}
 
-        {/* CHECK EMAIL */}
-        {step === "forgot" && (
-          <form onSubmit={handleCheckEmail} style={styles.form}>
-            <h2 style={styles.formTitle}>Verify Email</h2>
-
-            <input
-              type="email"
-              placeholder="Enter registered email"
-              style={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-
-            <button style={styles.button}>Continue</button>
-
-            <p style={styles.forgot} onClick={() => setStep("login")}>
-              Back to login
-            </p>
-          </form>
-        )}
-
-        {/* RESET PASSWORD */}
-        {step === "reset" && (
-          <form onSubmit={handleResetPassword} style={styles.form}>
-            <h2 style={styles.formTitle}>Reset Password</h2>
-
-            <input
-              type="password"
-              placeholder="New Password"
-              style={styles.input}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
-
-            <input
-              type="password"
-              placeholder="Confirm Password"
-              style={styles.input}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-
-            <button style={styles.button}>Update Password</button>
-          </form>
-        )}
+          {/* RESET PASSWORD FORM */}
+          {step === "reset" && (
+            <form onSubmit={handleResetPassword} className="flex flex-col gap-5">
+              <h2 className="text-2xl font-bold">Reset Password</h2>
+              <input
+                type="password"
+                placeholder="New Password"
+                className="w-full p-3.5 rounded-xl border border-white/25 bg-white/10 text-white placeholder-gray-300 outline-none"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Confirm Password"
+                className="w-full p-3.5 rounded-xl border border-white/25 bg-white/10 text-white placeholder-gray-300 outline-none"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+              <button className="w-full p-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 hover:opacity-90 font-semibold transition-all">
+                Update Password
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  page: {
-    height: "100vh",
-    width: "100vw",
-    background: "linear-gradient(135deg, #0f172a, #1e3a8a)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#fff",
-    position: "relative",
-    overflow: "hidden",
-  },
-  glowBlue: {
-    position: "absolute",
-    width: "500px",
-    height: "500px",
-    background: "rgba(59,130,246,0.35)",
-    borderRadius: "50%",
-    top: "-150px",
-    left: "-150px",
-    filter: "blur(120px)",
-  },
-  glowPurple: {
-    position: "absolute",
-    width: "500px",
-    height: "500px",
-    background: "rgba(168,85,247,0.35)",
-    borderRadius: "50%",
-    bottom: "-150px",
-    right: "-150px",
-    filter: "blur(120px)",
-  },
-  content: {
-    position: "relative",
-    zIndex: 2,
-    width: "90%",
-    maxWidth: "900px",
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "40px",
-  },
-  leftText: { flex: 1 },
-  brand: { fontSize: "48px", fontWeight: "800" },
-  tagline: { fontSize: "18px", color: "#c7d2fe" },
-  form: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-  },
-  formTitle: { fontSize: "26px", fontWeight: "700" },
-  input: {
-    padding: "14px",
-    borderRadius: "12px",
-    border: "1px solid rgba(255,255,255,0.25)",
-    background: "rgba(255,255,255,0.12)",
-    color: "#fff",
-    outline: "none", // Added outline none for cleaner focus
-  },
-  button: {
-    padding: "14px",
-    borderRadius: "12px",
-    background: "linear-gradient(90deg, #6366f1, #3b82f6)",
-    border: "none",
-    color: "#fff",
-    fontWeight: "600",
-    cursor: "pointer",
-  },
-  footerLinks: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-    alignItems: "center",
-  },
-  forgot: {
-    textAlign: "center",
-    fontSize: "14px",
-    color: "#93c5fd",
-    cursor: "pointer",
-    margin: 0,
-  },
-  // --- New Styles for Sign Up ---
-  signupText: {
-    fontSize: "14px",
-    color: "#cbd5e1", // Light grey to distinguish from 'forgot password'
-    margin: 0,
-  },
-  signupLink: {
-    color: "#fff", // White to pop out
-    fontWeight: "700",
-    cursor: "pointer",
-    marginLeft: "5px",
-    textDecoration: "underline",
-  }
 };
 
 export default StudentLogin;
