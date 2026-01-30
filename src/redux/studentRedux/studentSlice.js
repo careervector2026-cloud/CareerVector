@@ -1,18 +1,23 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../config/AxiosConfig"; 
 
-// Helper to load from Session Storage
+// Helper to load from Session Storage safely
 const loadFromStorage = () => {
   if (typeof window !== "undefined") {
-    const savedData = sessionStorage.getItem("careerVectorStudent");
-    return savedData ? JSON.parse(savedData) : null;
+    try {
+      const savedData = sessionStorage.getItem("careerVectorStudent");
+      return savedData ? JSON.parse(savedData) : null;
+    } catch (e) {
+      console.error("Error parsing user data", e);
+      return null;
+    }
   }
   return null;
 };
 
 // --- Async Thunks ---
 
-// 1. Send OTP (New Action)
+// 1. Send OTP (Used for Signup)
 export const sendOtp = createAsyncThunk(
   "student/sendOtp",
   async (email, { rejectWithValue }) => {
@@ -27,12 +32,12 @@ export const sendOtp = createAsyncThunk(
   }
 );
 
-// 2. Signup (Updated to handle Multipart data)
+// 2. Signup
 export const signupUser = createAsyncThunk(
   "student/signup",
   async (formData, { rejectWithValue }) => {
     try {
-      // Axios automatically handles multipart boundaries when passed FormData
+      // Axios handles Content-Type: multipart/form-data automatically with FormData object
       const response = await axiosInstance.post("/api/student/signup", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
@@ -66,7 +71,7 @@ const initialState = {
   loading: false,
   error: null,
   successMessage: null,
-  otpSent: false, // New State: Controls the UI switch
+  otpSent: false,
 };
 
 const studentSlice = createSlice({
@@ -86,7 +91,6 @@ const studentSlice = createSlice({
       state.error = null;
       state.successMessage = null;
     },
-    // New Reducer: Resets the flow if user goes back
     resetSignupFlow: (state) => {
       state.otpSent = false;
       state.error = null;
@@ -96,42 +100,23 @@ const studentSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // --- Send OTP Handlers ---
-      .addCase(sendOtp.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(sendOtp.fulfilled, (state) => {
-        state.loading = false;
-        state.otpSent = true; // Triggers UI to show OTP input
-        state.error = null;
-      })
-      .addCase(sendOtp.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
+      // Send OTP
+      .addCase(sendOtp.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(sendOtp.fulfilled, (state) => { state.loading = false; state.otpSent = true; state.error = null; })
+      .addCase(sendOtp.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
-      // --- Signup Handlers ---
-      .addCase(signupUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+      // Signup
+      .addCase(signupUser.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(signupUser.fulfilled, (state) => { 
+        state.loading = false; 
+        state.otpSent = false; 
+        state.successMessage = "Account created successfully! Please Login."; 
+        state.error = null; 
       })
-      .addCase(signupUser.fulfilled, (state) => {
-        state.loading = false;
-        state.otpSent = false;
-        state.successMessage = "Account created successfully! Please Login.";
-        state.error = null;
-      })
-      .addCase(signupUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
+      .addCase(signupUser.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
-      // --- Login Handlers ---
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      // Login
+      .addCase(loginUser.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
@@ -139,10 +124,7 @@ const studentSlice = createSlice({
         state.error = null;
         sessionStorage.setItem("careerVectorStudent", JSON.stringify(action.payload));
       })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+      .addCase(loginUser.rejected, (state, action) => { state.loading = false; state.error = action.payload; });
   },
 });
 

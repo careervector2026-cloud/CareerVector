@@ -1,17 +1,19 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../config/AxiosConfig"; 
 
-// Helper to load from Session Storage (Persists login across refreshes)
 const loadFromStorage = () => {
   if (typeof window !== "undefined") {
-    const savedData = sessionStorage.getItem("careerVectorRecruiter");
-    return savedData ? JSON.parse(savedData) : null;
+    try {
+      const savedData = sessionStorage.getItem("careerVectorRecruiter");
+      return savedData ? JSON.parse(savedData) : null;
+    } catch (e) {
+      console.error("Error parsing recruiter data", e);
+      return null;
+    }
   }
   return null;
 };
 
-// 1. Send OTP
-// Renamed to 'sendOtp' to match the import in RecruiterSignup.jsx
 export const sendOtp = createAsyncThunk(
   "recruiter/sendOtp",
   async (email, { rejectWithValue }) => {
@@ -24,7 +26,6 @@ export const sendOtp = createAsyncThunk(
   }
 );
 
-// 2. Signup (Verify & Save)
 export const signupRecruiter = createAsyncThunk(
   "recruiter/signup",
   async (formData, { rejectWithValue }) => {
@@ -39,7 +40,6 @@ export const signupRecruiter = createAsyncThunk(
   }
 );
 
-// 3. Login
 export const loginRecruiter = createAsyncThunk(
   "recruiter/login",
   async (credentials, { rejectWithValue }) => {
@@ -60,80 +60,51 @@ const recruiterSlice = createSlice({
     loading: false,
     error: null,
     successMessage: null,
-    otpSent: false, // Critical: Controls the switch between Form and OTP Input
+    otpSent: false,
   },
   reducers: {
+    logoutRecruiter: (state) => {
+      state.currentRecruiter = null;
+      state.isAuthenticated = false;
+      state.loading = false;
+      state.error = null;
+      state.successMessage = null;
+      state.otpSent = false;
+      sessionStorage.removeItem("careerVectorRecruiter");
+    },
     clearRecruiterErrors: (state) => {
       state.error = null;
       state.successMessage = null;
     },
-    // This was the missing export causing your error
     resetSignupFlow: (state) => {
       state.otpSent = false;
       state.error = null;
       state.successMessage = null;
       state.loading = false;
-    },
-    logoutRecruiter: (state) => {
-        state.currentRecruiter = null;
-        state.isAuthenticated = false;
-        state.otpSent = false;
-        state.error = null;
-        state.successMessage = null;
-        sessionStorage.removeItem("careerVectorRecruiter");
     }
   },
   extraReducers: (builder) => {
     builder
-      // --- Send OTP ---
-      .addCase(sendOtp.pending, (state) => { 
-          state.loading = true; 
-          state.error = null; 
-      })
-      .addCase(sendOtp.fulfilled, (state) => { 
-          state.loading = false; 
-          state.otpSent = true; // Triggers the UI to show OTP input
-      })
-      .addCase(sendOtp.rejected, (state, action) => { 
-          state.loading = false; 
-          state.error = action.payload; 
-      })
-
-      // --- Signup ---
-      .addCase(signupRecruiter.pending, (state) => { 
-          state.loading = true; 
-          state.error = null; 
-      })
+      .addCase(sendOtp.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(sendOtp.fulfilled, (state) => { state.loading = false; state.otpSent = true; })
+      .addCase(sendOtp.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      .addCase(signupRecruiter.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(signupRecruiter.fulfilled, (state) => { 
         state.loading = false; 
-        state.successMessage = "Account created successfully! Please Login."; 
+        state.successMessage = "Account created! Please Login."; 
         state.otpSent = false; 
       })
-      .addCase(signupRecruiter.rejected, (state, action) => { 
-          state.loading = false; 
-          state.error = action.payload; 
-      })
-
-      // --- Login ---
-      .addCase(loginRecruiter.pending, (state) => { 
-          state.loading = true; 
-          state.error = null; 
-      })
+      .addCase(signupRecruiter.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      .addCase(loginRecruiter.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(loginRecruiter.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
         state.currentRecruiter = action.payload;
-        state.error = null;
         sessionStorage.setItem("careerVectorRecruiter", JSON.stringify(action.payload));
       })
-      .addCase(loginRecruiter.rejected, (state, action) => { 
-          state.loading = false; 
-          state.error = action.payload; 
-      });
+      .addCase(loginRecruiter.rejected, (state, action) => { state.loading = false; state.error = action.payload; });
   },
 });
 
-// Export all actions including resetSignupFlow
-export const { clearRecruiterErrors, resetSignupFlow, logoutRecruiter } = recruiterSlice.actions;
-
+export const { logoutRecruiter, clearRecruiterErrors, resetSignupFlow } = recruiterSlice.actions;
 export default recruiterSlice.reducer;
