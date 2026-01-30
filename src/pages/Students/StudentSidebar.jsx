@@ -9,23 +9,23 @@ const StudentSidebar = ({ activeTab, setActiveTab, isDarkMode, toggleTheme, hand
         <h1 style={styles.logo}>CareerVector</h1>
       </div>
 
-      <nav style={styles.nav}>
+        <nav style={styles.nav}>
         {menuItems.map((item) => (
-          <div
+            <div
             key={item.name}
             style={{
-              ...styles.navItem,
-              backgroundColor: activeTab === item.name ? "rgba(255,255,255,0.1)" : "transparent",
-              borderLeft: activeTab === item.name ? "4px solid #3b82f6" : "4px solid transparent",
-              color: activeTab === item.name ? "#fff" : "#94a3b8"
-            }}
+                ...styles.navItem,
+                backgroundColor: activeTab === item.name ? "rgba(255,255,255,0.1)" : "transparent",
+                borderLeft: activeTab === item.name ? "4px solid #3b82f6" : "4px solid transparent",
+                color: activeTab === item.name ? "#fff" : "#94a3b8"
+                }}
             onClick={() => setActiveTab(item.name)}
-          >
+            >
             <span style={styles.navIcon}>{item.icon}</span>
             {item.name}
-          </div>
+        </div>
         ))}
-      </nav>
+        </nav>
 
       <div style={styles.sidebarFooter}>
         <div style={styles.navItem} onClick={toggleTheme}>

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logoutStudent } from "../../redux/studentRedux/studentSlice"; 
-import StudentSidebar from "./StudentSidebar"; // Adjust path as needed
+import StudentSidebar from "./StudentSidebar"; 
 
 const StudentDashboard = () => {
   const dispatch = useDispatch();
@@ -72,6 +72,7 @@ const StudentDashboard = () => {
       case "Home":
         return (
           <>
+            {/* PROFILE SUMMARY */}
             <div style={styles.cardRow}>
               {currentUser?.profileImageUrl ? (
                 <img src={currentUser.profileImageUrl} alt="Profile" style={{...styles.profileCircle, objectFit: 'cover', border: '2px solid #3b82f6'}} />
@@ -88,13 +89,14 @@ const StudentDashboard = () => {
             </div>
 
             <div style={styles.dashboardGrid}>
+              {/* LEFT COLUMN */}
               <div style={styles.col}>
                 <div style={styles.card}>
                   <h3 style={styles.cardTitle}>Contact & Links</h3>
                   <p style={styles.rowItem}>📞 {currentUser?.mobileNumber || "N/A"}</p>
                   <p style={styles.rowItem}>✉️ {currentUser?.email || "N/A"}</p>
-                  {currentUser?.githubUrl && <p style={styles.rowItem}>💻 <a href={currentUser.githubUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>GitHub</a></p>}
-                  {currentUser?.leetcodeurl && <p style={styles.rowItem}>⚡ <a href={currentUser.leetcodeurl} target="_blank" rel="noopener noreferrer" style={styles.link}>LeetCode</a></p>}
+                  {currentUser?.githubUrl && <p style={styles.rowItem}>💻 <a href={currentUser.githubUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>GitHub Profile</a></p>}
+                  {currentUser?.leetcodeurl && <p style={styles.rowItem}>⚡ <a href={currentUser.leetcodeurl} target="_blank" rel="noopener noreferrer" style={styles.link}>LeetCode Profile</a></p>}
                 </div>
 
                 <div style={styles.card}>
@@ -113,6 +115,7 @@ const StudentDashboard = () => {
                 </div>
               </div>
 
+              {/* RIGHT COLUMN */}
               <div style={styles.col}>
                 <div style={styles.card}>
                   <h3 style={styles.cardTitle}>Skills</h3>
@@ -120,6 +123,33 @@ const StudentDashboard = () => {
                     <span style={styles.tag}>{currentUser?.branch || "Computer Science"}</span>
                     <span style={styles.tag}>Python</span>
                     <span style={styles.tag}>SQL</span>
+                    <span style={styles.tag}>React.js</span>
+                  </div>
+                </div>
+
+                {/* PROJECTS SECTION */}
+                <div style={styles.card}>
+                  <h3 style={styles.cardTitle}>Projects</h3>
+                  <button style={{...styles.btn, width:'100%', marginBottom:'15px'}}>+ Add Project</button>
+                  
+                  <div style={styles.projectItem}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                      <b>Final Year Project</b>
+                      <button style={styles.viewBtn}>View</button>
+                    </div>
+                    <p style={{fontSize:'12px', color: isDarkMode ? '#94a3b8' : '#64748b', marginTop: '5px'}}>
+                      AI-Powered Resume Analyzer | Python & ML
+                    </p>
+                  </div>
+
+                  <div style={styles.projectItem}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                      <b>Portfolio Website</b>
+                      <button style={styles.viewBtn}>View</button>
+                    </div>
+                    <p style={{fontSize:'12px', color: isDarkMode ? '#94a3b8' : '#64748b', marginTop: '5px'}}>
+                      Personal Branding | React & Tailwind
+                    </p>
                   </div>
                 </div>
               </div>
@@ -127,7 +157,7 @@ const StudentDashboard = () => {
           </>
         );
       default:
-        return <div style={styles.plainContent}><h3>{activeTab}</h3><p>Content for {activeTab} coming soon.</p></div>;
+        return <div style={styles.plainContent}><h3>{activeTab}</h3><p>Content for {activeTab} is being prepared.</p></div>;
     }
   };
 
@@ -144,7 +174,7 @@ const StudentDashboard = () => {
 
       <div style={styles.mainArea}>
         <div style={styles.topHeader}>
-          <div></div>
+          <div style={{color:'#94a3b8', fontSize:'14px'}}>Dashboard / {activeTab}</div>
           <div style={styles.userProfileIcon}>{getInitials(currentUser?.fullName)}</div>
         </div>
         <div style={styles.scrollableContent}>{renderContent()}</div>
@@ -154,19 +184,22 @@ const StudentDashboard = () => {
         <div style={styles.widgetOverlay}>
           <div style={styles.chatContainer}>
             <div style={styles.chatHeader}>
-              <h3 style={styles.widgetTitle}>Career Assistant</h3>
+              <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                <div style={{width:'8px', height:'8px', borderRadius:'50%', background:'#22c55e'}}></div>
+                <h3 style={styles.widgetTitle}>Career Assistant</h3>
+              </div>
               <button style={styles.closeBtn} onClick={() => setShowChat(false)}>✖</button>
             </div>
             <div style={styles.chatBody}>
               {messages.map((msg) => (
-                <div key={msg.id} style={{...styles.messageBubble, alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', background: msg.sender === 'user' ? '#3b82f6' : 'rgba(255,255,255,0.1)'}}>
+                <div key={msg.id} style={{...styles.messageBubble, alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', background: msg.sender === 'user' ? '#3b82f6' : (isDarkMode ? '#334155' : '#e2e8f0'), color: msg.sender === 'user' ? '#fff' : (isDarkMode ? '#fff' : '#000')}}>
                   {msg.text}
                 </div>
               ))}
               <div ref={chatEndRef} />
             </div>
             <div style={styles.chatFooter}>
-              <input style={styles.chatInput} value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} />
+              <input style={styles.chatInput} placeholder="Type a message..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} />
               <button style={styles.sendBtn} onClick={handleSendMessage}>➤</button>
             </div>
           </div>
@@ -183,7 +216,7 @@ const getStyles = (isDark) => {
     cardBg: isDark ? "#1e293b" : "#fff",
     textPrimary: isDark ? "#f8fafc" : "#1e293b",
     textSecondary: isDark ? "#94a3b8" : "#64748b",
-    border: isDark ? "#334155" : "#f1f5f9",
+    border: isDark ? "#334155" : "#e2e8f0",
     inputBg: isDark ? "#0f172a" : "#fff",
     inputBorder: isDark ? "#475569" : "#cbd5e1",
     accentBoxBg: isDark ? "#0f172a" : "#f8fafc",
@@ -194,38 +227,41 @@ const getStyles = (isDark) => {
     mainArea: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
     topHeader: { height: "60px", backgroundColor: "#0f172a", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 30px" },
     userProfileIcon: { width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "#3b82f6", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" },
-    scrollableContent: { flex: 1, overflowY: "auto", padding: "30px" },
-    cardRow: { display: "flex", gap: "25px", background: colors.cardBg, padding: "25px", borderRadius: "16px", marginBottom: "25px", alignItems: "center" },
-    profileCircle: { width: "80px", height: "80px", borderRadius: "50%", backgroundColor: "#cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px" },
+    scrollableContent: { flex: 1, overflowY: "auto", padding: "30px", paddingBottom: "100px" },
+    cardRow: { display: "flex", gap: "25px", background: colors.cardBg, padding: "25px", borderRadius: "16px", marginBottom: "25px", alignItems: "center", boxShadow: "0 2px 5px rgba(0,0,0,0.05)" },
+    profileCircle: { width: "80px", height: "80px", borderRadius: "50%", backgroundColor: "#cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px", color: "#64748b" },
     headingName: { margin:0, color: colors.textPrimary },
     metaText: { margin: "5px 0", color: colors.textSecondary, fontSize: "14px" },
-    statusBadge: { display: "inline-block", padding: "4px 12px", borderRadius: "20px", backgroundColor: "#dcfce7", color: "#166534", fontSize: "12px" },
+    statusBadge: { display: "inline-block", padding: "4px 12px", borderRadius: "20px", backgroundColor: "#dcfce7", color: "#166534", fontSize: "12px", fontWeight: "600" },
     dashboardGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "25px" },
     col: { display: "flex", flexDirection: "column", gap: "25px" },
-    card: { background: colors.cardBg, padding: "25px", borderRadius: "16px", border: `1px solid ${colors.border}` },
-    cardTitle: { margin: "0 0 20px 0", fontSize: "16px", borderBottom: `2px solid ${colors.border}`, paddingBottom: "10px" },
-    cardHeaderBorder: { display:'flex', justifyContent:'space-between', marginBottom:'15px', borderBottom:`2px solid ${colors.border}` },
+    card: { background: colors.cardBg, padding: "25px", borderRadius: "16px", border: `1px solid ${colors.border}`, boxShadow: "0 2px 5px rgba(0,0,0,0.05)" },
+    cardTitle: { margin: "0 0 20px 0", fontSize: "16px", borderBottom: `2px solid ${colors.border}`, paddingBottom: "10px", color: colors.textPrimary },
+    cardHeaderBorder: { display:'flex', justifyContent:'space-between', alignItems: 'center', marginBottom:'15px', borderBottom:`2px solid ${colors.border}`, paddingBottom: '10px' },
     cardTitleNoMargin: { margin:0, fontSize:'16px' },
     subText: { fontSize:'12px', color: colors.textSecondary },
     rowItem: { margin: "10px 0", fontSize: "14px", color: colors.textSecondary },
     link: { color: "#3b82f6", textDecoration: "none" },
     tagContainer: { display: "flex", flexWrap: "wrap", gap: "8px" },
-    tag: { background: "#eff6ff", color: "#2563eb", padding: "5px 10px", borderRadius: "6px", fontSize: "12px" },
+    tag: { background: "#eff6ff", color: "#2563eb", padding: "5px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "600" },
+    projectItem: { background: colors.accentBoxBg, padding: "15px", borderRadius: "10px", marginTop: "10px", border: `1px solid ${colors.border}` },
+    viewBtn: { background: colors.cardBg, color: colors.textPrimary, border: `1px solid ${colors.border}`, padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px" },
+    btn: { background: "#3b82f6", color: "#fff", border: "none", padding: "10px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" },
     semesterGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" },
-    semesterInputGroup: { display: "flex", background: colors.accentBoxBg, padding: "8px", borderRadius: "8px" },
+    semesterInputGroup: { display: "flex", background: colors.accentBoxBg, padding: "8px", borderRadius: "8px", border: `1px solid ${colors.border}` },
     semLabel: { fontSize: "12px", color: colors.textSecondary, marginRight: "5px" },
-    semInput: { width: "100%", border: "none", background: "transparent", color: colors.textPrimary, textAlign: "right" },
-    floatingBtn: { position: 'fixed', bottom: '30px', right: '30px', width: '60px', height: '60px', borderRadius: '50%', background: '#3b82f6', color: '#fff', fontSize: '24px', border: 'none', cursor: 'pointer' },
+    semInput: { width: "100%", border: "none", background: "transparent", color: colors.textPrimary, textAlign: "right", fontWeight: "600" },
+    floatingBtn: { position: 'fixed', bottom: '30px', right: '30px', width: '60px', height: '60px', borderRadius: '50%', background: '#3b82f6', color: '#fff', fontSize: '24px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(59,130,246,0.4)' },
     widgetOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' },
     chatContainer: { width: '400px', height: '550px', background: colors.cardBg, borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-    chatHeader: { display: 'flex', justifyContent: 'space-between', padding: '15px 20px', borderBottom: `1px solid ${colors.border}` },
-    widgetTitle: { margin: 0, fontSize: '16px' },
+    chatHeader: { display: 'flex', justifyContent: 'space-between', padding: '15px 20px', borderBottom: `1px solid ${colors.border}`, background: isDark ? '#1e293b' : '#fff' },
+    widgetTitle: { margin: 0, fontSize: '15px' },
     closeBtn: { background: 'transparent', border: 'none', color: colors.textSecondary, cursor: 'pointer' },
     chatBody: { flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' },
-    messageBubble: { padding: '10px', borderRadius: '10px', maxWidth: '80%', fontSize: '14px', color: '#fff' },
+    messageBubble: { padding: '10px 14px', borderRadius: '12px', maxWidth: '80%', fontSize: '13px' },
     chatFooter: { padding: '15px', display: 'flex', gap: '10px', borderTop: `1px solid ${colors.border}` },
     chatInput: { flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${colors.inputBorder}`, background: colors.inputBg, color: colors.textPrimary },
-    sendBtn: { background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 15px' },
+    sendBtn: { background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 15px', cursor:'pointer' },
     plainContent: { padding: '20px' }
   };
 };
