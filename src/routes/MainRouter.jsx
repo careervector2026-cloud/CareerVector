@@ -8,7 +8,7 @@ import Index from "../pages/Index.jsx";
 // Student Pages
 import StudentLogin from "../pages/Students/StudentLogin.jsx";
 import StudentSignup from "../pages/Students/StudentSignup.jsx"; // Check file casing!
-import StudentDashboard from "../pages/Students/StudentDashboard.jsx";
+import StudentPortal from "../pages/Students/StudentPortal.jsx";
 // Recruiter Pages
 import RecruiterLogin from "../pages/Recruiters/RecruiterLogin.jsx";
 import RecruiterSignup from "../pages/Recruiters/RecruiterSignup.jsx";
@@ -57,7 +57,7 @@ const MainRouter = () => {
       <Route element={<ProtectedRoute roleType="student" />}>
          {/* Placeholder for future student profile */}
          {/* <Route path="/student/profile" element={<StudentProfile />} /> */}
-         <Route path="/student/home" element={<StudentDashboard></StudentDashboard>}></Route>
+         <Route path="/student/home" element={<StudentPortal></StudentPortal>}></Route>
       </Route>
 
       {/* Catch-all: Redirects unknown routes to Home */}
