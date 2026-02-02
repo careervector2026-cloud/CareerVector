@@ -12,7 +12,8 @@ import StudentPortal from "../pages/Students/StudentPortal.jsx";
 // Recruiter Pages
 import RecruiterLogin from "../pages/Recruiters/RecruiterLogin.jsx";
 import RecruiterSignup from "../pages/Recruiters/RecruiterSignup.jsx";
-import RecruiterDashboard from "../pages/Recruiters/RecruiterDashboard.jsx";
+import RecruiterPortal from "../pages/Recruiters/RecruiterPortal.jsx";
+
 // Admin Pages
 import AdminLogin from "../pages/Admins/AdminLogin.jsx";
 
@@ -43,7 +44,7 @@ const MainRouter = () => {
       {/* 🛡️ Recruiter Protected Area */}
       {/* Any route nested inside here checks state.recruiter.isAuthenticated */}
       <Route element={<ProtectedRoute roleType="recruiter" />}>
-        <Route path="/recruiter/home" element={<RecruiterDashboard/>} />
+        <Route path="/recruiter/home" element={<RecruiterPortal/>} />
         {/* Add more recruiter routes here later, e.g., /recruiter/post-job */}
       </Route>
 
