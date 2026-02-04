@@ -8,6 +8,7 @@ import { logoutStudent } from "../../redux/studentRedux/studentSlice";
 import StudentLayout from "./components/StudentLayout"
 import StudentDashboard from "./components/StudentDashboard";
 import StudentProfile from "./components/StudentProfile";
+import StudentLearningPath from "./components/StudentLearningPath";
 
 const StudentPortal = () => {
   const dispatch = useDispatch();
@@ -62,6 +63,9 @@ const StudentPortal = () => {
       case "Profile":
         return <StudentProfile currentUser={currentUser} />;
       
+      case "Learning Path":
+        return <StudentLearningPath />;
+
       default:
         return (
           <div className="flex flex-col items-center justify-center h-96 text-center animate-pulse">

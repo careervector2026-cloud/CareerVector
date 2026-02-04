@@ -1,12 +1,11 @@
 import React from "react";
 
-const RecruiterDashboard = ({ recruiter }) => {
+const RecruiterDashboard = () => {
   return (
     <div className="animate-fade-in space-y-8">
       
-      {/* STATS GRID */}
+      {/* --- STATS GRID --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
         <StatCard 
           icon="💼" 
           value="12" 
@@ -28,13 +27,12 @@ const RecruiterDashboard = ({ recruiter }) => {
           trend="-2 days (improved)" 
           trendUp={true} 
         />
-
       </div>
 
-      {/* MAIN CONTENT GRID (Funnel & Actions) */}
+      {/* --- MAIN CONTENT GRID --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* RECRUITMENT FUNNEL (Takes up 2 columns) */}
+        {/* RECRUITMENT FUNNEL */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white">Recruitment Funnel</h3>
@@ -50,24 +48,21 @@ const RecruiterDashboard = ({ recruiter }) => {
           </div>
         </div>
 
-        {/* QUICK ACTIONS (Takes up 1 column) */}
+        {/* QUICK ACTIONS */}
         <div className="flex flex-col gap-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white">Quick Actions</h3>
-            
             <ActionCard 
                 icon="✨" 
                 title="Post New Job" 
                 desc="Create a new requisition" 
                 colorClass="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
             />
-            
             <ActionCard 
                 icon="✏️" 
                 title="Edit Job" 
                 desc="Update active listings" 
                 colorClass="text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800"
             />
-
             <ActionCard 
                 icon="📅" 
                 title="Schedule Interview" 
@@ -81,7 +76,6 @@ const RecruiterDashboard = ({ recruiter }) => {
 };
 
 // --- SUB COMPONENTS ---
-
 const StatCard = ({ icon, value, label, trend, trendUp }) => (
   <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col gap-4 transition-transform hover:-translate-y-1">
     <div className="flex justify-between items-start">
@@ -106,10 +100,7 @@ const FunnelBar = ({ label, count, color, width }) => (
             <span className="text-slate-900 dark:text-white">{count}</span>
         </div>
         <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div 
-                className={`h-full rounded-full transition-all duration-1000 ease-out group-hover:opacity-80 ${color}`} 
-                style={{ width: width }}
-            ></div>
+            <div className={`h-full rounded-full transition-all duration-1000 ease-out group-hover:opacity-80 ${color}`} style={{ width: width }}></div>
         </div>
     </div>
 );

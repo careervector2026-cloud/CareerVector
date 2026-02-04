@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from "react";
-// import axios from "axios"; // TODO: Uncomment when ready
-// import { useDispatch } from "react-redux"; // TODO: Uncomment for state updates
-// import { updateStudentSuccess } from "../../../redux/studentSlice"; // TODO: Example action
+import { useDispatch, useSelector } from "react-redux";
+import { 
+  uploadProfileImage, 
+  uploadResume, 
+  updateStudentProfile 
+} from "../../../redux/studentRedux/studentSlice";
+import axiosInstance from "../../../config/AxiosConfig";
 
-const StudentProfile = ({ currentUser }) => {
+const StudentProfile = () => {
+  const dispatch = useDispatch();
+  
+  // Get currentUser from Redux Store
+  const { currentUser } = useSelector((state) => state.student);
+
   // --- STATE MANAGEMENT ---
   const [formData, setFormData] = useState({
     mobileNumber: "",
@@ -22,14 +31,13 @@ const StudentProfile = ({ currentUser }) => {
   const [profilePicPreview, setProfilePicPreview] = useState(null);
   const [selectedResume, setSelectedResume] = useState(null);
 
-  // Load data from Redux/Props
+  // Load data from Redux currentUser
   useEffect(() => {
     if (currentUser) {
       setFormData((prev) => ({
         ...prev,
         mobileNumber: currentUser.mobileNumber || "",
         githubUrl: currentUser.githubUrl || "",
-        // Check for both camelCase and lowercase variations from DB
         leetcodeUrl: currentUser.leetcodeUrl || currentUser.leetcodeurl || "",
         hackerrankUrl: currentUser.hackerrankUrl || currentUser.hackerrankurl || "",
         codechefUrl: currentUser.codechefUrl || currentUser.codechefurl || "",
@@ -42,6 +50,11 @@ const StudentProfile = ({ currentUser }) => {
         gpa_sem_7: currentUser.gpa_sem_7 || "",
         gpa_sem_8: currentUser.gpa_sem_8 || "",
       }));
+
+      // Set Profile Pic Preview
+      if (currentUser.profileImageUrl) {
+        setProfilePicPreview(currentUser.profileImageUrl);
+      }
     }
   }, [currentUser]);
 
@@ -51,42 +64,27 @@ const StudentProfile = ({ currentUser }) => {
   };
 
   // =================================================================================
-  // 1. SAVE SINGLE FIELD (Contact Links, GPAs, etc.)
+  // 1. SAVE SINGLE FIELD (Via Redux)
   // =================================================================================
   const handleSaveField = async (fieldName, label) => {
     const value = formData[fieldName];
+    const updatePayload = { 
+        email: currentUser?.email,
+        [fieldName]: value        
+    };
     
-    // Construct payload dynamically based on the field being saved
-    const updatePayload = { [fieldName]: value };
+    // Dispatch Redux Action
+    const resultAction = await dispatch(updateStudentProfile(updatePayload));
     
-    console.log(`[Mock API] Updating ${label} with payload:`, updatePayload);
-
-    /* // --- API INTEGRATION LOGIC ---
-    try {
-      // Endpoint: PATCH /api/v1/student/profile
-      // Headers: Authorization: Bearer <token>
-      const response = await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/v1/student/profile`, 
-        updatePayload,
-        { withCredentials: true } 
-      );
-
-      if (response.status === 200) {
-        alert(`${label} updated successfully!`);
-        // dispatch(updateStudentSuccess(response.data.student)); // Update Redux Store
-      }
-    } catch (error) {
-      console.error("Update failed:", error);
-      alert(`Failed to update ${label}. Please try again.`);
+    if (updateStudentProfile.fulfilled.match(resultAction)) {
+      alert(`${label} updated successfully!`);
+    } else {
+      alert(`Failed to update ${label}: ${resultAction.payload}`);
     }
-    */
-    
-    // Temporary Success Message for UI Demo
-    alert(`${label} updated successfully!`);
   };
 
   // =================================================================================
-  // 2. UPDATE PASSWORD
+  // 2. UPDATE PASSWORD (Direct Axios - No need for global state update)
   // =================================================================================
   const handleUpdatePassword = async () => {
     if (!formData.password) return alert("Please enter a new password.");
@@ -94,49 +92,36 @@ const StudentProfile = ({ currentUser }) => {
       return alert("Passwords do not match!");
     }
 
-    const payload = { password: formData.password };
-    console.log("[Mock API] Updating Password:", payload);
-
-    /* // --- API INTEGRATION LOGIC ---
+    const payload = { 
+        email: currentUser?.email,
+        password: formData.password 
+    };
+    
     try {
-      // Endpoint: POST /api/v1/student/change-password
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/v1/student/change-password`, 
-        payload,
-        { withCredentials: true }
+      const response = await axiosInstance.patch(
+        `/api/student/change-password`, 
+        payload
       );
 
       if (response.status === 200) {
         alert("Password updated successfully!");
-        // Clear fields on success
         setFormData((prev) => ({ ...prev, password: "", confirmPassword: "" }));
       }
     } catch (error) {
-      const errMsg = error.response?.data?.message || "Failed to update password";
-      alert(errMsg);
+      alert("Failed to update password: " + (error.response?.data || error.message));
     }
-    */
-
-    // Temporary Success Message for UI Demo
-    alert("Password updated successfully!");
-    setFormData((prev) => ({ ...prev, password: "", confirmPassword: "" }));
   };
 
   // =================================================================================
-  // 3. FILE HANDLING (Selection & Preview)
+  // 3. FILE HANDLING
   // =================================================================================
   const handleFileSelect = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate File Size (Example: Max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      return alert("File size exceeds 2MB limit.");
-    }
-
     if (type === "Profile Pic") {
       setSelectedProfilePic(file);
-      // Create a local URL for instant preview
+      // Show local preview immediately before upload
       const previewUrl = URL.createObjectURL(file);
       setProfilePicPreview(previewUrl);
     } else {
@@ -145,56 +130,44 @@ const StudentProfile = ({ currentUser }) => {
   };
 
   // =================================================================================
-  // 4. SAVE UPLOAD (Profile Pic / Resume)
+  // 4. SAVE UPLOAD (Via Redux)
   // =================================================================================
   const handleUploadSave = async (type) => {
     const file = type === "Profile Pic" ? selectedProfilePic : selectedResume;
-    
+
     if (!file) {
       return alert(`Please select a ${type} to upload first.`);
     }
 
-    console.log(`[Mock API] Uploading ${type}:`, file.name);
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+    uploadFormData.append("email", currentUser?.email);
 
-    /* // --- API INTEGRATION LOGIC ---
     try {
-      const uploadFormData = new FormData();
-      uploadFormData.append("file", file); // 'file' must match backend middleware (e.g., multer)
-
-      // Determine Endpoint based on type
-      const endpoint = type === "Profile Pic" 
-        ? "/api/v1/student/upload-avatar" 
-        : "/api/v1/student/upload-resume";
-
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}${endpoint}`, 
-        uploadFormData, 
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true
+      if (type === "Profile Pic") {
+        const resultAction = await dispatch(uploadProfileImage(uploadFormData));
+        if (uploadProfileImage.fulfilled.match(resultAction)) {
+          alert("Profile Picture updated successfully!");
+          setSelectedProfilePic(null);
+        } else {
+          alert("Upload failed: " + resultAction.payload);
         }
-      );
-
-      if (response.status === 200) {
-        alert(`${type} uploaded successfully!`);
-        // dispatch(updateStudentSuccess(response.data.student)); // Update Redux with new URL
-        
-        // Clear preview if it was an avatar update
-        if (type === "Profile Pic") {
-           // setProfilePicPreview(null); // Optional: keep or clear
+      } else {
+        const resultAction = await dispatch(uploadResume(uploadFormData));
+        if (uploadResume.fulfilled.match(resultAction)) {
+          alert("Resume uploaded successfully!");
+          setSelectedResume(null);
+        } else {
+          alert("Upload failed: " + resultAction.payload);
         }
       }
     } catch (error) {
       console.error("Upload error:", error);
-      alert(`Failed to upload ${type}.`);
+      alert("An unexpected error occurred.");
     }
-    */
-
-    // Temporary Success Message
-    alert(`${type} uploaded successfully!`);
   };
 
-  // --- REUSABLE COMPONENT: INPUT + SAVE BUTTON ---
+  // Reusable Form Row
   const FieldRow = ({ label, name, placeholder, type = "text" }) => (
     <div className="flex flex-col gap-2">
       <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</label>
@@ -261,7 +234,7 @@ const StudentProfile = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* --- ACADEMIC GRADES (3 Columns) --- */}
+      {/* --- ACADEMIC GRADES --- */}
       <div className="mb-10">
         <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-5 border-l-4 border-blue-600 pl-3">
           Semester GPAs
@@ -339,7 +312,6 @@ const StudentProfile = ({ currentUser }) => {
                 Save
               </button>
             </div>
-            
             {/* Preview Image */}
             {profilePicPreview && (
               <div className="mt-3 flex items-center gap-3 animate-fade-in">
@@ -374,6 +346,20 @@ const StudentProfile = ({ currentUser }) => {
               <p className="mt-1 text-xs text-green-600 dark:text-green-400">
                 Selected: {selectedResume.name}
               </p>
+            )}
+
+            {/* Resume Link from Redux currentUser */}
+            {currentUser?.resumeUrl && (
+              <div className="mt-2">
+                <a 
+                  href={currentUser.resumeUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  View Current Resume
+                </a>
+              </div>
             )}
           </div>
         </div>

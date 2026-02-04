@@ -22,7 +22,7 @@ const RecruiterLayout = ({
 
   return (
     <div className={`min-h-screen ${isDarkMode ? "dark" : ""}`}>
-      <div className="flex h-screen w-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 overflow-hidden transition-colors duration-300">
+      <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 overflow-hidden transition-colors duration-300">
         
         {/* SIDEBAR */}
         <RecruiterSidebar
@@ -39,7 +39,8 @@ const RecruiterLayout = ({
           
           {/* TOP HEADER */}
           <div className="h-16 bg-white dark:bg-slate-900 flex items-center justify-between px-8 shadow-sm border-b border-slate-200 dark:border-slate-800 z-10 flex-shrink-0 transition-colors">
-            {/* Breadcrumb / Title */}
+            
+            {/* Title */}
             <div>
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
                 {activeTab}
@@ -53,28 +54,23 @@ const RecruiterLayout = ({
             <div className="flex items-center gap-4">
                 <div className="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                     <span className="mr-2">🔍</span>
-                    <input 
-                        type="text" 
-                        placeholder="Search candidates..." 
-                        className="bg-transparent border-none outline-none text-sm text-slate-600 dark:text-slate-300 w-40"
-                    />
+                    <input type="text" placeholder="Search candidates..." className="bg-transparent border-none outline-none text-sm text-slate-600 dark:text-slate-300 w-40"/>
                 </div>
-
                 <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-
                 <div className="flex items-center gap-3">
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-none">
                             {currentRecruiter?.fullName || "Recruiter"}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Admin</p>
+                        {/* Mapped 'role' from your data */}
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {currentRecruiter?.role || "HR"}
+                        </p>
                     </div>
-                    {currentRecruiter?.profileImg ? (
-                        <img 
-                            src={currentRecruiter.profileImg} 
-                            alt="Profile" 
-                            className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500"
-                        />
+                    
+                    {/* Mapped 'imageUrl' from your data */}
+                    {currentRecruiter?.imageUrl ? (
+                        <img src={currentRecruiter.imageUrl} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500" />
                     ) : (
                         <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
                             {getInitials(currentRecruiter?.fullName)}
@@ -84,7 +80,7 @@ const RecruiterLayout = ({
             </div>
           </div>
 
-          {/* DYNAMIC CONTENT SCROLL AREA */}
+          {/* SCROLLABLE CONTENT */}
           <div className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
             {children}
           </div>
@@ -93,5 +89,4 @@ const RecruiterLayout = ({
     </div>
   );
 };
-
 export default RecruiterLayout;
