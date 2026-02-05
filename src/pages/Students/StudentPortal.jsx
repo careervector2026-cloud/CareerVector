@@ -9,7 +9,8 @@ import StudentLayout from "./components/StudentLayout"
 import StudentDashboard from "./components/StudentDashboard";
 import StudentProfile from "./components/StudentProfile";
 import StudentLearningPath from "./components/StudentLearningPath";
-
+import StutudentJobs from "./components/StudentJobs";
+import MyApplications from "./components/MyApplications";
 const StudentPortal = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -47,6 +48,8 @@ const StudentPortal = () => {
   const menuItems = [
     { name: "Home", icon: "🏠" },
     { name: "Profile", icon: "👤" },
+    { name: "Jobs", icon: "💼" },
+    {name:"AppliedJobs",icon:"💼"},
     { name: "Resume Analyzer", icon: "📄" },
     { name: "Skill Gap Detector", icon: "📊" },
     { name: "Interview Simulator", icon: "🎤" },
@@ -62,7 +65,10 @@ const StudentPortal = () => {
       
       case "Profile":
         return <StudentProfile currentUser={currentUser} />;
-      
+      case "Jobs":
+        return <StutudentJobs currentUser={currentUser}/>
+      case "AppliedJobs":
+        return <MyApplications currentUser={currentUser} />
       case "Learning Path":
         return <StudentLearningPath />;
 

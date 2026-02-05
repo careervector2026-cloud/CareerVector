@@ -1,24 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // 1. Import useLocation
 import { logoutRecruiter } from "../../redux/recruiterRedux/recruiterSlice";
 
 // Components
 import RecruiterLayout from "./components/RecruiterLayout";
 import RecruiterDashboard from "./components/RecruiterDashboard";
 import RecruiterSettings from "./components/RecruiterSettings"; 
+import RecruiterJobs from "./components/RecruiterJobs"
+import Candidates from "./components/Candidates";
 
 const RecruiterPortal = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation(); // 2. Initialize location hook
   
-  // 1. Get Recruiter Data from Redux
+  // Get Recruiter Data from Redux
   const { currentRecruiter } = useSelector((state) => state.recruiter || {});
 
-  // 2. Tab State
+  // Tab State
   const [activeTab, setActiveTab] = useState("Dashboard");
 
-  // 3. Theme Logic
+  // 3. NEW: Check if we were redirected here with a specific tab request
+  useEffect(() => {
+    if (location.state && location.state.activeTab) {
+      setActiveTab(location.state.activeTab);
+      
+      // Optional: Clear the state so it doesn't get stuck if you refresh
+      // window.history.replaceState({}, document.title)
+    }
+  }, [location]);
+
+  // Theme Logic
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   useEffect(() => {
@@ -34,7 +47,7 @@ const RecruiterPortal = () => {
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
-  // 4. Logout Action
+  // Logout Action
   const handleLogout = () => {
     dispatch(logoutRecruiter());
     navigate("/recruiter/login");
@@ -48,18 +61,19 @@ const RecruiterPortal = () => {
     { name: "Settings", icon: "⚙️" },
   ];
 
-  // 5. Render Logic
+  // Render Logic
   const renderContent = () => {
     switch (activeTab) {
       case "Dashboard":
-        return <RecruiterDashboard />; // Renders JUST the widgets
+        return <RecruiterDashboard />; 
       
       case "Settings":
-        // Passes data to settings form
         return <RecruiterSettings recruiter={currentRecruiter} />; 
 
       case "Jobs":
+        return <RecruiterJobs/>
       case "Candidates":
+        return<Candidates/>
       case "Analytics":
         return (
           <div className="flex flex-col items-center justify-center h-96 text-center animate-fade-in">
@@ -78,7 +92,6 @@ const RecruiterPortal = () => {
   };
 
   return (
-    // The Layout wraps everything ONE time here
     <RecruiterLayout
       activeTab={activeTab}
       setActiveTab={setActiveTab}

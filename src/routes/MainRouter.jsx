@@ -13,7 +13,9 @@ import StudentPortal from "../pages/Students/StudentPortal.jsx";
 import RecruiterLogin from "../pages/Recruiters/RecruiterLogin.jsx";
 import RecruiterSignup from "../pages/Recruiters/RecruiterSignup.jsx";
 import RecruiterPortal from "../pages/Recruiters/RecruiterPortal.jsx";
-
+import PostJobs from "../pages/Recruiters/components/PostJobs.jsx";
+import EditJobs from "../pages/Recruiters/components/EditJobs.jsx";
+import ClosedJobs from "../pages/Recruiters/components/ClosedJobs.jsx";
 // Admin Pages
 import AdminLogin from "../pages/Admins/AdminLogin.jsx";
 
@@ -45,6 +47,10 @@ const MainRouter = () => {
       {/* Any route nested inside here checks state.recruiter.isAuthenticated */}
       <Route element={<ProtectedRoute roleType="recruiter" />}>
         <Route path="/recruiter/home" element={<RecruiterPortal/>} />
+        <Route path="/recruiter/home/post-jobs" element={<PostJobs />} />
+        <Route path="/recruiter/home/edit-jobs" element={<EditJobs/>} />
+        <Route path="/recruiter/home/close-jobs" element={<ClosedJobs/>} />
+
         {/* Add more recruiter routes here later, e.g., /recruiter/post-job */}
       </Route>
 

@@ -8,7 +8,7 @@ import {
 
 const RecruiterSettings = ({ recruiter }) => {
   const dispatch = useDispatch();
-
+  // console.log(recruiter)
   // --- STATE ---
   const [mobile, setMobile] = useState("");
   const [company, setCompany] = useState("");
