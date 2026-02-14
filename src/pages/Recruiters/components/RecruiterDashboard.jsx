@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../../config/AxiosConfig";
-import { Loader2, Briefcase, Users, CheckCircle, Clock, Sparkles, Edit, Calendar } from "lucide-react";
+import { Loader2, Briefcase, Users, CheckCircle, Clock, Sparkles, Edit } from "lucide-react";
 
 const RecruiterDashboard = () => {
     const navigate = useNavigate();
@@ -57,9 +57,10 @@ const RecruiterDashboard = () => {
 
                 <div className="flex flex-col gap-6">
                     <h3 className="text-lg font-bold dark:text-white">Quick Actions</h3>
-                    <ActionCard icon={<Sparkles />} title="Post New Job" desc="Create requisition" colorClass="bg-indigo-50 text-indigo-600" onClick={() => navigate("/recruiter/post-jobs")} />
-                    <ActionCard icon={<Edit />} title="Manage Jobs" desc="Edit active listings" colorClass="bg-amber-50 text-amber-600" onClick={() => navigate("/recruiter/edit-jobs")} />
-                    <ActionCard icon={<Users />} title="Candidates" desc="Review applications" colorClass="bg-emerald-50 text-emerald-600" onClick={() => navigate("/recruiter/candidates")} />
+                    <ActionCard icon={<Sparkles />} title="Post New Job" desc="Create requisition" colorClass="bg-indigo-50 text-indigo-600" onClick={() => navigate("/recruiter/home/post-jobs")} />
+                    <ActionCard icon={<Edit />} title="Manage Jobs" desc="Edit active listings" colorClass="bg-amber-50 text-amber-600" onClick={() => navigate("/recruiter/home/edit-jobs")} />
+                    {/* CHANGED: Now navigates to the portal root and passes state to switch the tab */}
+                    <ActionCard icon={<Users />} title="Candidates" desc="Review applications" colorClass="bg-emerald-50 text-emerald-600" onClick={() => navigate("/recruiter/home", { state: { activeTab: "Candidates" } })} />
                 </div>
             </div>
 
@@ -92,7 +93,6 @@ const RecruiterDashboard = () => {
     );
 };
 
-// Reusable Sub-components
 const StatCard = ({ icon, value, label, trend, trendUp }) => (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col gap-4 transition-transform hover:-translate-y-1">
         <div className="flex justify-between items-start">

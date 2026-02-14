@@ -10,7 +10,8 @@ const PostJobs = () => {
     jobType: 'Full-time',
     location: '',
     salaryRange: '',
-    description: ''
+    description: '',
+    numberOfPostings: 1 // NEW: Initialized to 1
   });
   
   const { currentRecruiter } = useSelector((state) => state.recruiter || {});
@@ -37,15 +38,12 @@ const PostJobs = () => {
     }
   };
 
-  // --- STYLES (Matched with EditJobs) ---
   const inputClass = "w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder-slate-400 dark:placeholder-gray-500";
   const labelClass = "text-sm font-semibold text-slate-700 dark:text-gray-300";
 
   return (
     <div className="p-6 min-h-screen bg-slate-50 dark:bg-slate-900 animate-fade-in">
       <div className="max-w-4xl mx-auto">
-        
-        {/* Navigation Header */}
         <div className="flex justify-between items-center mb-6">
           <button 
             type="button"
@@ -56,7 +54,6 @@ const PostJobs = () => {
           </button>
         </div>
 
-        {/* Main Card */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-xl p-8">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Post a New Job</h1>
@@ -66,8 +63,6 @@ const PostJobs = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            
-            {/* Row 1: Job Title & Job Type */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className={labelClass}>Job Title</label>
@@ -98,7 +93,6 @@ const PostJobs = () => {
               </div>
             </div>
 
-            {/* Row 2: Location & Salary */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className={labelClass}>Location</label>
@@ -125,7 +119,21 @@ const PostJobs = () => {
               </div>
             </div>
 
-            {/* Row 3: Description */}
+            {/* NEW ROW: Number of Postings */}
+            <div className="flex flex-col gap-2">
+              <label className={labelClass}>Number of Postings (Vacancies)</label>
+              <input 
+                type="number" 
+                name="numberOfPostings"
+                min="1"
+                placeholder="e.g. 5"
+                className={inputClass}
+                value={formData.numberOfPostings}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
             <div className="flex flex-col gap-2">
               <label className={labelClass}>Job Description</label>
               <textarea 
@@ -139,7 +147,6 @@ const PostJobs = () => {
               ></textarea>
             </div>
 
-            {/* Actions */}
             <div className="flex justify-end gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-gray-800">
               <button 
                 type="button" 
@@ -155,7 +162,6 @@ const PostJobs = () => {
                 Publish Job
               </button>
             </div>
-
           </form>
         </div>
       </div>

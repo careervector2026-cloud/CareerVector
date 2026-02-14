@@ -11,7 +11,6 @@ const EditJobs = () => {
   const [editingJob, setEditingJob] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // --- FETCH JOBS ---
   useEffect(() => {
     const fetchJobs = async () => {
       if (!currentRecruiter?.email) return;
@@ -29,20 +28,16 @@ const EditJobs = () => {
     fetchJobs();
   }, [currentRecruiter]);
 
-  // --- FILTER: SHOW ONLY ACTIVE JOBS ---
   const activeJobs = jobs.filter(job => job.active === true);
 
-  // --- HANDLER: CLOSE JOB ---
   const handleCloseJob = async (id) => {
     if (!window.confirm("Are you sure you want to close this job? It will be moved to the Closed Jobs archive.")) return;
-
     try {
       await axiosInstance.patch(`/api/jobs/${id}/toggle`, null, {
         params: { email: currentRecruiter.email }
       });
-      
       setJobs(jobs.map(job => 
-        job.id === id ? { ...job, active: false } : job // Optimistic update
+        job.id === id ? { ...job, active: false } : job 
       ));
     } catch (error) {
       console.error("Error closing job:", error);
@@ -50,13 +45,11 @@ const EditJobs = () => {
     }
   };
 
-  // --- HANDLER: SAVE EDITS ---
   const handleSave = async (e) => {
     e.preventDefault();
     try {
       const payload = { recruiterEmail: currentRecruiter.email, ...editingJob };
       await axiosInstance.put(`/api/jobs/${editingJob.id}`, payload);
-      
       setJobs(jobs.map(j => j.id === editingJob.id ? editingJob : j));
       setEditingJob(null);
       alert("Job updated successfully!");
@@ -66,24 +59,19 @@ const EditJobs = () => {
     }
   };
 
-  // --- STYLES ---
-  // Improved Input Styling for Dark Mode
   const inputClass = "w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder-slate-400 dark:placeholder-gray-500";
   const labelClass = "text-sm font-semibold text-slate-700 dark:text-gray-300";
 
-  // --- RENDER: LOADING ---
   if (loading) return (
     <div className="flex justify-center items-center h-64 min-h-screen bg-slate-50 dark:bg-slate-900">
         <div className="text-slate-500 dark:text-gray-400 animate-pulse">Loading active jobs...</div>
     </div>
   );
 
-  // --- RENDER: EDIT FORM ---
   if (editingJob) {
     return (
       <div className="p-6 min-h-screen bg-slate-50 dark:bg-slate-900 animate-fade-in">
         <div className="max-w-4xl mx-auto">
-        {/* Navigation Header */}
         <div className="flex justify-between items-center mb-6">
             <button 
                 onClick={() => setEditingJob(null)} 
@@ -93,7 +81,6 @@ const EditJobs = () => {
             </button>
         </div>
 
-        {/* Form Card */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-xl p-8">
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">Edit Job Details</h1>
           <p className="text-slate-500 dark:text-gray-400 text-sm mb-8">Update the job posting information below.</p>
@@ -124,6 +111,20 @@ const EditJobs = () => {
                 <input type="text" className={inputClass} value={editingJob.salaryRange} onChange={(e) => setEditingJob({...editingJob, salaryRange: e.target.value})} />
               </div>
             </div>
+
+            {/* NEW FIELD: Number of Postings */}
+            <div className="flex flex-col gap-2">
+              <label className={labelClass}>Number of Postings (Vacancies)</label>
+              <input 
+                type="number" 
+                min="1"
+                className={inputClass} 
+                value={editingJob.numberOfPostings} 
+                onChange={(e) => setEditingJob({...editingJob, numberOfPostings: e.target.value})} 
+                required 
+              />
+            </div>
+
             <div className="flex flex-col gap-2">
               <label className={labelClass}>Description</label>
               <textarea rows="6" className={inputClass} value={editingJob.description} onChange={(e) => setEditingJob({...editingJob, description: e.target.value})} required></textarea>
@@ -151,14 +152,10 @@ const EditJobs = () => {
     );
   }
 
-  // --- MAIN LIST VIEW ---
   return (
     <div className="p-6 min-h-screen bg-slate-50 dark:bg-slate-900 animate-fade-in">
       <div className="max-w-6xl mx-auto">
-      {/* Top Navigation Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-        
-        {/* Left: Back Button */}
         <button 
             onClick={() => navigate('/recruiter/home', { state: { activeTab: 'Jobs' } })} 
             className="flex items-center px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-all text-sm font-medium shadow-sm"
@@ -166,7 +163,6 @@ const EditJobs = () => {
             <span className="mr-2">←</span> Back to Dashboard
         </button>
 
-        {/* Right: View Closed Jobs Button */}
         <button 
             onClick={() => navigate('/recruiter/home/close-jobs')} 
             className="flex items-center px-5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all text-sm font-medium"
@@ -175,13 +171,11 @@ const EditJobs = () => {
         </button>
       </div>
 
-      {/* Page Title */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Active Jobs</h1>
         <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">Manage, edit, or close your currently open positions.</p>
       </div>
 
-      {/* Empty State */}
       {activeJobs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-gray-800 border-dashed">
           <div className="text-4xl mb-4">📭</div>
@@ -189,12 +183,9 @@ const EditJobs = () => {
           <p className="text-slate-400 dark:text-gray-500 text-sm mt-1">Post a new job to get started.</p>
         </div>
       ) : (
-        /* Job Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {activeJobs.map((job) => (
             <div key={job.id} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-                
-                {/* Card Header */}
                 <div className="mb-4">
                   <div className="flex justify-between items-start mb-2">
                       <h3 className="font-bold text-lg text-slate-800 dark:text-white line-clamp-1 pr-2" title={job.jobTitle}>
@@ -209,6 +200,10 @@ const EditJobs = () => {
                     <span className="text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-400 font-medium border border-slate-200 dark:border-gray-700">
                         {job.jobType}
                     </span>
+                    {/* NEW: Display Vacancies Count */}
+                    <span className="text-xs px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium border border-indigo-100 dark:border-indigo-900">
+                        {job.numberOfPostings} Vacancies
+                    </span>
                   </div>
 
                   <div className="space-y-1">
@@ -221,7 +216,6 @@ const EditJobs = () => {
                   </div>
                 </div>
 
-                {/* Card Actions */}
                 <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 dark:border-gray-800 mt-auto">
                   <button 
                       onClick={() => setEditingJob(job)}

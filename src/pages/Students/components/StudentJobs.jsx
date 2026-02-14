@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axiosInstance from "../../../config/AxiosConfig";
 import { 
     Briefcase, MapPin, DollarSign, Building2, 
-    Clock, Search, RefreshCcw, Target, X, CheckCircle 
+    Clock, Search, RefreshCcw, Target, X, CheckCircle, Trash2, Users 
 } from 'lucide-react';
 
 const StudentJobs = () => {
@@ -12,7 +12,6 @@ const StudentJobs = () => {
     const [selectedJob, setSelectedJob] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(new Date());
 
-    // Use correct session key from your storage
     const sessionData = JSON.parse(sessionStorage.getItem("careerVectorStudent")); 
     const rollNumber = sessionData?.rollNumber;
 
@@ -40,9 +39,22 @@ const StudentJobs = () => {
             await axiosInstance.post(`/api/student/apply/${jobId}?rollNumber=${rollNumber}`);
             alert("Application submitted successfully!");
             setSelectedJob(null);
-            fetchJobs(); // Refresh list to update button to "Applied"
+            fetchJobs(); 
         } catch (error) {
             alert(error.response?.data || "Failed to apply.");
+        }
+    };
+
+    // NEW: Handle Withdrawal Logic
+    const handleWithdraw = async (jobId) => {
+        if (!window.confirm("Are you sure you want to withdraw your application? This action cannot be undone.")) return;
+        try {
+            // Update this endpoint to match your backend withdrawal route
+            await axiosInstance.delete(`/api/student/withdraw/${jobId}?rollNumber=${rollNumber}`);
+            alert("Application withdrawn successfully.");
+            fetchJobs();
+        } catch (error) {
+            alert(error.response?.data || "Failed to withdraw application.");
         }
     };
 
@@ -75,7 +87,7 @@ const StudentJobs = () => {
                     <div className="flex justify-center py-20"><RefreshCcw className="animate-spin text-blue-500" size={40} /></div>
                 ) : (
                     <div className="grid gap-6">
-                        {filteredData.length > 0 ? filteredData.map(({ job, matchScore, hasApplied }) => (
+                        {filteredData.length > 0 ? filteredData.map(({ job, matchScore, hasApplied, applicationStatus }) => (
                             <div key={job.id} className="bg-white dark:bg-gray-800 border dark:border-gray-700 p-6 rounded-xl shadow-sm hover:shadow-md transition-all">
                                 <div className="flex justify-between items-start">
                                     <div className="flex gap-4">
@@ -87,11 +99,19 @@ const StudentJobs = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    {matchScore !== null && matchScore !== undefined && matchScore >= 0 && (
-                                        <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-bold border border-green-200 dark:border-green-800">
-                                            <Target size={16} /> {matchScore}% Match
-                                        </div>
-                                    )}
+                                    <div className="flex flex-col items-end gap-2">
+                                        {matchScore !== null && matchScore !== undefined && matchScore >= 0 && (
+                                            <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-bold border border-green-200 dark:border-green-800">
+                                                <Target size={16} /> {matchScore}% Match
+                                            </div>
+                                        )}
+                                        {/* NEW: Openings Badge */}
+                                        {job.numberOfPostings > 0 && (
+                                            <div className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full text-[12px] font-bold border border-indigo-100 dark:border-indigo-800">
+                                                <Users size={14} /> {job.numberOfPostings} Openings
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-500 dark:text-gray-400">
@@ -103,11 +123,26 @@ const StudentJobs = () => {
                                 <div className="mt-6 flex justify-end gap-3 items-center">
                                     <button onClick={() => setSelectedJob(job)} className="px-4 py-2 text-blue-600 font-semibold hover:underline">Details</button>
                                     
-                                    {/* Conditional Button/Badge */}
                                     {hasApplied ? (
-                                        <span className="px-6 py-2 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-bold rounded-lg cursor-default flex items-center gap-2 border border-gray-200 dark:border-gray-600">
-                                            <CheckCircle size={18} /> Applied
-                                        </span>
+                                        <div className="flex gap-2">
+                                            {/* Withdraw Button: Enabled only if status is PENDING */}
+                                            <button 
+                                                onClick={() => handleWithdraw(job.id)}
+                                                disabled={applicationStatus !== 'PENDING'}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all border ${
+                                                    applicationStatus === 'PENDING' 
+                                                    ? "text-red-600 border-red-200 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800" 
+                                                    : "text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700"
+                                                }`}
+                                                title={applicationStatus !== 'PENDING' ? "Cannot withdraw once processed" : "Withdraw Application"}
+                                            >
+                                                <Trash2 size={18} /> Withdraw
+                                            </button>
+
+                                            <span className="px-6 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 font-bold rounded-lg flex items-center gap-2 border border-green-200 dark:border-green-800">
+                                                <CheckCircle size={18} /> {applicationStatus === 'PENDING' ? 'Applied' : applicationStatus}
+                                            </span>
+                                        </div>
                                     ) : (
                                         <button 
                                             onClick={() => handleApply(job.id)} 
@@ -130,15 +165,25 @@ const StudentJobs = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
                         <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
-                            <h2 className="text-2xl font-bold dark:text-white">{selectedJob.jobTitle}</h2>
+                            <div>
+                                <h2 className="text-2xl font-bold dark:text-white">{selectedJob.jobTitle}</h2>
+                                <p className="text-blue-600 font-bold">{selectedJob.recruiter?.companyName}</p>
+                            </div>
                             <button onClick={() => setSelectedJob(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"><X size={24} className="dark:text-white"/></button>
                         </div>
                         <div className="p-6 overflow-y-auto">
-                            <p className="text-blue-600 font-bold mb-4">{selectedJob.recruiter?.companyName}</p>
+                            <div className="mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/20 w-fit px-3 py-1 rounded-lg">
+                                <Users size={18}/> {selectedJob.numberOfPostings} Total Vacancies
+                            </div>
                             <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap italic">{selectedJob.description}</p>
                         </div>
                         <div className="p-6 border-t dark:border-gray-700 flex justify-end">
-                            <button onClick={() => handleApply(selectedJob.id)} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700">Confirm Apply</button>
+                            <button 
+                                onClick={() => handleApply(selectedJob.id)} 
+                                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+                            >
+                                Confirm Apply
+                            </button>
                         </div>
                     </div>
                 </div>
