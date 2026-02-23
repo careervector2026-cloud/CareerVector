@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axiosInstance from "../../../config/AxiosConfig";
 import { 
     Briefcase, MapPin, DollarSign, Building2, 
-    Clock, Search, RefreshCcw, Target, X, CheckCircle, Trash2, Users 
+    Clock, Search, RefreshCcw, Target, X, CheckCircle, Trash2, Users, AlertCircle, Clock3
 } from 'lucide-react';
 
 const StudentJobs = () => {
@@ -45,11 +45,9 @@ const StudentJobs = () => {
         }
     };
 
-    // NEW: Handle Withdrawal Logic
     const handleWithdraw = async (jobId) => {
         if (!window.confirm("Are you sure you want to withdraw your application? This action cannot be undone.")) return;
         try {
-            // Update this endpoint to match your backend withdrawal route
             await axiosInstance.delete(`/api/student/withdraw/${jobId}?rollNumber=${rollNumber}`);
             alert("Application withdrawn successfully.");
             fetchJobs();
@@ -62,6 +60,19 @@ const StudentJobs = () => {
         job.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.recruiter?.companyName?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Helper function for dynamic status styles
+    const getStatusStyles = (status) => {
+        const s = status?.toUpperCase();
+        if (s === 'REJECTED') {
+            return "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800";
+        }
+        if (s === 'UNDER_REVIEW' || s === 'REVIEWING') {
+            return "bg-yellow-50 text-yellow-600 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800";
+        }
+        // Default (Applied/Pending/Accepted)
+        return "bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800";
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 p-4 md:p-8">
@@ -105,7 +116,6 @@ const StudentJobs = () => {
                                                 <Target size={16} /> {matchScore}% Match
                                             </div>
                                         )}
-                                        {/* NEW: Openings Badge */}
                                         {job.numberOfPostings > 0 && (
                                             <div className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full text-[12px] font-bold border border-indigo-100 dark:border-indigo-800">
                                                 <Users size={14} /> {job.numberOfPostings} Openings
@@ -121,11 +131,15 @@ const StudentJobs = () => {
                                 </div>
 
                                 <div className="mt-6 flex justify-end gap-3 items-center">
-                                    <button onClick={() => setSelectedJob(job)} className="px-4 py-2 text-blue-600 font-semibold hover:underline">Details</button>
+                                    <button 
+                                        onClick={() => setSelectedJob({ ...job, hasApplied, applicationStatus })} 
+                                        className="px-4 py-2 text-blue-600 font-semibold hover:underline"
+                                    >
+                                        Details
+                                    </button>
                                     
                                     {hasApplied ? (
                                         <div className="flex gap-2">
-                                            {/* Withdraw Button: Enabled only if status is PENDING */}
                                             <button 
                                                 onClick={() => handleWithdraw(job.id)}
                                                 disabled={applicationStatus !== 'PENDING'}
@@ -139,8 +153,11 @@ const StudentJobs = () => {
                                                 <Trash2 size={18} /> Withdraw
                                             </button>
 
-                                            <span className="px-6 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 font-bold rounded-lg flex items-center gap-2 border border-green-200 dark:border-green-800">
-                                                <CheckCircle size={18} /> {applicationStatus === 'PENDING' ? 'Applied' : applicationStatus}
+                                            <span className={`px-6 py-2 font-bold rounded-lg flex items-center gap-2 border transition-all ${getStatusStyles(applicationStatus)}`}>
+                                                {applicationStatus?.toUpperCase() === 'REJECTED' && <AlertCircle size={18} />}
+                                                {(applicationStatus?.toUpperCase() === 'UNDER REVIEW' || applicationStatus?.toUpperCase() === 'REVIEWING') && <Clock3 size={18} />}
+                                                {(applicationStatus === 'PENDING' || applicationStatus?.toUpperCase() === 'ACCEPTED') && <CheckCircle size={18} />}
+                                                {applicationStatus === 'PENDING' ? 'Applied' : applicationStatus}
                                             </span>
                                         </div>
                                     ) : (
@@ -178,12 +195,18 @@ const StudentJobs = () => {
                             <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap italic">{selectedJob.description}</p>
                         </div>
                         <div className="p-6 border-t dark:border-gray-700 flex justify-end">
-                            <button 
-                                onClick={() => handleApply(selectedJob.id)} 
-                                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
-                            >
-                                Confirm Apply
-                            </button>
+                            {selectedJob.hasApplied ? (
+                                <span className={`px-6 py-2 font-bold rounded-lg border ${getStatusStyles(selectedJob.applicationStatus)}`}>
+                                    Status: {selectedJob.applicationStatus === 'PENDING' ? 'Applied' : selectedJob.applicationStatus}
+                                </span>
+                            ) : (
+                                <button 
+                                    onClick={() => handleApply(selectedJob.id)} 
+                                    className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+                                >
+                                    Confirm Apply
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
