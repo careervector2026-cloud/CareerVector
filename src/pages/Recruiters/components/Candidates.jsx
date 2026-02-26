@@ -42,12 +42,12 @@ const Candidates = () => {
     const handleStatusUpdate = async (appId, newStatus) => {
         try {
             await axiosInstance.patch(`/api/jobs/applications/${appId}/status?status=${newStatus}`);
-            fetchCandidates(selectedJob.id); 
+            setApplicants(prev => prev.map(app => app.id === appId ? { ...app, status: newStatus } : app));
         } catch (err) { alert(err.response?.data?.message || "Action blocked."); }
     };
 
     const handleFinalize = async () => {
-        if (!window.confirm("Finalize Job: This will close the job, run AI ranking, and notify candidates. Continue?")) return;
+        if (!window.confirm("Finalize Job: This will close the job and notify candidates. Continue?")) return;
         setActionLoading(true);
         try {
             await axiosInstance.post(`/api/jobs/${selectedJob.id}/finalize?email=${email}`);
@@ -57,17 +57,48 @@ const Candidates = () => {
         finally { setActionLoading(false); }
     };
 
-    const handleShorlist = async() =>{
-        alert(`Ai ShortListing is Initiated for ${selectedJob.jobTitle}`);
+    /**
+     * UPDATED SHORTLIST LOGIC
+     * Merges AI response into local state.
+     */
+    const handleShorlist = async () => {
+        alert(`AI ShortListing Initiated for ${selectedJob.jobTitle}`);
         setActionLoading(true);
-        try{
-            await axiosInstance.post(`/api/jobs/${selectedJob.id}/shortlist?email=${email}`);
-            alert("ShortListing Completed Sucessfully")
-            fetchCandidates(selectedJob.id);
+        try {
+            const res = await axiosInstance.post(`/api/jobs/${selectedJob.id}/shortlist?email=${email}`);
+            const aiResults = res.data; 
+
+            if (aiResults && Array.isArray(aiResults)) {
+                setApplicants(currentApps => currentApps.map(app => {
+                    // Match by candidate email (candidate_id in AI response)
+                    const aiMatch = aiResults.find(r => r.candidate_id.toLowerCase() === app.student.email.toLowerCase());
+                    
+                    if (aiMatch) {
+                        let newStatus = app.status;
+                        const aiStatus = aiMatch.status.toLowerCase();
+
+                        // Map AI response strings to your UI Status Constants
+                        if (aiStatus === 'shortlist') newStatus = 'SHORTLISTED';
+                        else if (aiStatus === 'reject') newStatus = 'REJECTED';
+                        else if (aiStatus === 'review') newStatus = 'UNDER_REVIEW';
+
+                        return {
+                            ...app,
+                            matchScore: aiMatch.final_score,
+                            status: newStatus 
+                        };
+                    }
+                    return app;
+                }));
+                alert("AI Shortlisting applied to current view!");
+            }
+        } catch (err) {
+            console.error("AI Error:", err);
+            alert("Shortlisting failed.");
+        } finally {
+            setActionLoading(false);
         }
-        catch(err){alert("shortlisting failed");}
-        finally{setActionLoading(false);}
-    }
+    };
 
     const handleNotifyReviewed = async () => {
         if (!window.confirm(`Notify ${pendingReviewNotifications} updated candidates?`)) return;
@@ -93,14 +124,16 @@ const Candidates = () => {
     };
 
     // --- SORTING & FILTERING ---
-    const filteredAndSorted = applicants
+    const filteredAndSorted = [...applicants]
         .filter(app => app.student?.fullName?.toLowerCase().includes(candidateSearch.toLowerCase()) || app.student?.rollNumber?.includes(candidateSearch))
         .sort((a, b) => {
             const statusOrder = { 'SHORTLISTED': 1, 'UNDER_REVIEW': 2, 'PENDING': 3, 'REJECTED': 4 };
             const orderA = statusOrder[a.status] || 5;
             const orderB = statusOrder[b.status] || 5;
             if (orderA !== orderB) return orderA - orderB;
-            return (Number(b.matchScore) || 0) - (Number(a.matchScore) || 0);
+            const scoreA = parseFloat(a.matchScore) || 0;
+            const scoreB = parseFloat(b.matchScore) || 0;
+            return scoreB - scoreA;
         });
 
     if (loading && jobs.length === 0) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-indigo-600" size={40} /></div>;
@@ -128,7 +161,6 @@ const Candidates = () => {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {/* Simplified Header */}
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <button onClick={() => setSelectedJob(null)} className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold hover:underline self-start">
                             <ArrowLeft size={20} /> Back to Postings
@@ -150,7 +182,6 @@ const Candidates = () => {
                         </div>
                     </div>
 
-                    {/* Finalize Action Bar */}
                     <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
                         <h2 className="text-xl font-bold dark:text-white">Applicants for: <span className="text-indigo-600 dark:text-indigo-400">{selectedJob.jobTitle}</span></h2>
                         <div className="flex gap-3">
@@ -160,10 +191,12 @@ const Candidates = () => {
                                 </button>
                             )}
                             <button 
-                                onClick = {handleShorlist}
+                                onClick={handleShorlist}
                                 disabled={isJobLocked || actionLoading}
-                                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-sm transition-all ${isJobLocked ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800' : 'bg-orange-600 text-white hover:bg-orange-700'}`}
-                            >ShortList
+                                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-sm transition-all ${isJobLocked ? 'hidden' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
+                            >
+                                {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Target size={18} />}
+                                Run AI Shortlist
                             </button>
                             <button 
                                 onClick={handleFinalize} 
@@ -176,7 +209,6 @@ const Candidates = () => {
                         </div>
                     </div>
 
-                    {/* Applicant List */}
                     <div className="grid gap-4">
                         {filteredAndSorted.map(app => (
                             <div key={app.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 transition-all">
@@ -187,7 +219,7 @@ const Candidates = () => {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-bold dark:text-white">{app.student.fullName}</h4>
-                                            {app.matchScore !== null && (
+                                            {(app.matchScore !== null && app.matchScore !== undefined) && (
                                                 <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded-lg text-[10px] font-bold border border-purple-100 dark:border-purple-800">
                                                     <Target size={12} /> {(Number(app.matchScore) * 100).toFixed(0)}% Match
                                                 </div>

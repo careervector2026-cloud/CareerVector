@@ -11,6 +11,7 @@ import StudentProfile from "./components/StudentProfile";
 import StudentLearningPath from "./components/StudentLearningPath";
 import StutudentJobs from "./components/StudentJobs";
 import MyApplications from "./components/MyApplications";
+import SkillGapDetector from "./components/SkillGapDetecter";
 const StudentPortal = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ const StudentPortal = () => {
     { name: "Profile", icon: "👤" },
     { name: "Jobs", icon: "💼" },
     {name:"AppliedJobs",icon:"💼"},
-    { name: "Resume Analyzer", icon: "📄" },
+    // { name: "Resume Analyzer", icon: "📄" },
     { name: "Skill Gap Detector", icon: "📊" },
     { name: "Interview Simulator", icon: "🎤" },
     { name: "Placement Insights", icon: "📈" },
@@ -69,6 +70,8 @@ const StudentPortal = () => {
         return <StutudentJobs currentUser={currentUser}/>
       case "AppliedJobs":
         return <MyApplications currentUser={currentUser} />
+      case "Skill Gap Detector":
+      return <SkillGapDetector currentUser={currentUser} />;
       case "Learning Path":
         return <StudentLearningPath />;
 
