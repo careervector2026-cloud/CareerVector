@@ -19,7 +19,7 @@ import ClosedJobs from "../pages/Recruiters/components/ClosedJobs.jsx";
 import Candidates from "../pages/Recruiters/components/Candidates.jsx";
 // Admin Pages
 import AdminLogin from "../pages/Admins/AdminLogin.jsx";
-
+import AdminSignup from "../pages/Admins/AdminSignup.jsx";
 
 const MainRouter = () => {
   return (
@@ -39,6 +39,7 @@ const MainRouter = () => {
 
       {/* Admin Public */}
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/signup" element={<AdminSignup></AdminSignup>}></Route>
 
       {/* ==============================
           PROTECTED ROUTES (Login Required)
@@ -58,7 +59,7 @@ const MainRouter = () => {
       {/* 🛡️ Admin Protected Area */}
       <Route element={<ProtectedRoute roleType="admin" />}>
          {/* Placeholder for future admin dashboard */}
-         {/* <Route path="/admin/dashboard" element={<AdminDashboard />} /> */}
+         <Route path="/admin/dashboard" element={<h2>Welcome Mr.Admin</h2>} />
       </Route>
 
       {/* 🛡️ Student Protected Area */}

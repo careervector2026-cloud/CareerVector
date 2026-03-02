@@ -48,6 +48,7 @@ const RecruiterPortal = () => {
     { name: "Dashboard", icon: "📊" },
     { name: "Jobs", icon: "💼" },
     { name: "Candidates", icon: "👥" },
+    { name: "Interview Simulator", icon: "🎤" },
     { name: "Analytics", icon: "📈" },
     { name: "Settings", icon: "⚙️" },
   ];
@@ -62,16 +63,18 @@ const RecruiterPortal = () => {
         return <RecruiterJobs />;
       case "Candidates":
         return <Candidates />;
-      case "Analytics":
+      default:
         return (
-          <div className="flex flex-col items-center justify-center h-96 text-center animate-fade-in">
-              <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center text-3xl mb-4">🚧</div>
-              <h3 className="text-2xl font-bold text-slate-700 dark:text-white">Analytics</h3>
-              <p className="text-slate-500 mt-2">Coming soon.</p>
+          <div className="flex flex-col items-center justify-center h-96 text-center animate-pulse">
+            <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center text-3xl mb-4">
+                🚧
+            </div>
+            <h3 className="text-2xl font-bold text-slate-700 dark:text-slate-300">{activeTab}</h3>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm">
+              This feature is currently under development. Check back soon!
+            </p>
           </div>
         );
-      default:
-        return null;
     }
   };
 

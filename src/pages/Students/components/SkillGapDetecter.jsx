@@ -225,14 +225,14 @@ const SkillGapDetector = () => {
                                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-bold italic mb-8 relative z-10">
                                         "{analysisResult.external_validation?.confidence_notes[0] || 'Analyze your profile indicators to see verification notes.'}"
                                     </p>
-                                    <button 
+                                    {/* <button 
                                         onClick={generatePath} 
                                         disabled={pathLoading} 
                                         className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-black shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
                                         {pathLoading ? <Loader2 className="animate-spin" size={16} /> : <Map size={16} />}
                                         GENERATE LEARNING PATH
-                                    </button>
+                                    </button> */}
                                 </div>
                             </div>
                         </div>
