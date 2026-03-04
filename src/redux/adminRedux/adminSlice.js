@@ -4,9 +4,10 @@ import axiosInstance from "../../config/AxiosConfig";
 const loadFromStorage = () => {
   if (typeof window !== "undefined") {
     try {
-      const savedData = sessionStorage.getItem("careerVectorAdmin");
+      const savedData = localStorage.getItem("careerVectorAdmin");
       return savedData ? JSON.parse(savedData) : null;
     } catch (e) {
+      console.log(e.error)
       return null;
     }
   }
@@ -60,7 +61,7 @@ const adminSlice = createSlice({
       state.currentAdmin = null;
       state.isAuthenticated = false;
       state.otpSent = false;
-      sessionStorage.removeItem("careerVectorAdmin");
+      localStorage.removeItem("careerVectorAdmin");
     },
     clearAdminErrors: (state) => {
       state.error = null;
@@ -91,7 +92,7 @@ const adminSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.currentAdmin = action.payload;
-        sessionStorage.setItem("careerVectorAdmin", JSON.stringify(action.payload));
+        localStorage.setItem("careerVectorAdmin", JSON.stringify(action.payload));
       })
       .addCase(loginAdmin.rejected, (state, action) => { state.loading = false; state.error = action.payload; });
   }

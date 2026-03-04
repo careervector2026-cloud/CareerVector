@@ -12,6 +12,8 @@ import StudentLearningPath from "./components/StudentLearningPath";
 import StutudentJobs from "./components/StudentJobs";
 import MyApplications from "./components/MyApplications";
 import SkillGapDetector from "./components/SkillGapDetecter";
+import PlacementInsightsDashboard from "./components/PlacementInsightsDashboard";
+import StudentInterviews from "./components/StudentInterviews";
 const StudentPortal = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -48,14 +50,15 @@ const StudentPortal = () => {
 
   const menuItems = [
     { name: "Home", icon: "🏠" },
-    { name: "Profile", icon: "👤" },
+    
     { name: "Jobs", icon: "💼" },
     {name:"AppliedJobs",icon:"💼"},
     // { name: "Resume Analyzer", icon: "📄" },
     { name: "Skill Gap Detector", icon: "📊" },
-    { name: "Interview Simulator", icon: "🎤" },
     { name: "Placement Insights", icon: "📈" },
+    { name: "Interviews", icon: "🎤" },
     { name: "Learning Path", icon: "🎓" },
+    { name: "Profile", icon: "👤" },
   ];
 
   // --- RENDER CONTENT ---
@@ -74,7 +77,10 @@ const StudentPortal = () => {
       return <SkillGapDetector currentUser={currentUser} />;
       case "Learning Path":
         return <StudentLearningPath />;
-
+      case "Placement Insights":
+        return <PlacementInsightsDashboard />;
+      case "Interviews":
+        return <StudentInterviews currentUser={currentUser} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-96 text-center animate-pulse">

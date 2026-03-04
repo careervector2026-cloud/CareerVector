@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import ProtectedRoute from "../components/ProtectedRoute"; // Make sure this path is correct
+import ProtectedRoute from "../config/ProtectedRoute"; // Make sure this path is correct
 
 // Pages
 import Index from "../pages/Index.jsx";
@@ -20,6 +20,7 @@ import Candidates from "../pages/Recruiters/components/Candidates.jsx";
 // Admin Pages
 import AdminLogin from "../pages/Admins/AdminLogin.jsx";
 import AdminSignup from "../pages/Admins/AdminSignup.jsx";
+import AdminPortal from "../pages/Admins/AdminPortal.jsx";
 
 const MainRouter = () => {
   return (
@@ -59,7 +60,7 @@ const MainRouter = () => {
       {/* 🛡️ Admin Protected Area */}
       <Route element={<ProtectedRoute roleType="admin" />}>
          {/* Placeholder for future admin dashboard */}
-         <Route path="/admin/dashboard" element={<h2>Welcome Mr.Admin</h2>} />
+         <Route path="/admin/dashboard" element={<AdminPortal />} />
       </Route>
 
       {/* 🛡️ Student Protected Area */}

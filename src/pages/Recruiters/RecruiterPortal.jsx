@@ -8,6 +8,7 @@ import RecruiterDashboard from "./components/RecruiterDashboard";
 import RecruiterSettings from "./components/RecruiterSettings"; 
 import RecruiterJobs from "./components/RecruiterJobs";
 import Candidates from "./components/Candidates";
+import RecruiterInterviews from "./components/RecruiterInterviews";
 
 const RecruiterPortal = () => {
   const dispatch = useDispatch();
@@ -48,7 +49,7 @@ const RecruiterPortal = () => {
     { name: "Dashboard", icon: "📊" },
     { name: "Jobs", icon: "💼" },
     { name: "Candidates", icon: "👥" },
-    { name: "Interview Simulator", icon: "🎤" },
+    { name: "Interviews", icon: "🎤" },
     { name: "Analytics", icon: "📈" },
     { name: "Settings", icon: "⚙️" },
   ];
@@ -63,6 +64,8 @@ const RecruiterPortal = () => {
         return <RecruiterJobs />;
       case "Candidates":
         return <Candidates />;
+      case "Interviews":
+        return <RecruiterInterviews/>
       default:
         return (
           <div className="flex flex-col items-center justify-center h-96 text-center animate-pulse">
