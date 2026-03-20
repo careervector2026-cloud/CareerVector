@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 // Correcting paths based on your folder structure
 import AdminLayout from "./components/AdminLayout";
-import { HomeView, AnalyticsView, StudentsView } from "./components/AdminDashboard";
-
+import { HomeView,StudentsView } from "./components/AdminDashboard";
+import AnalyticsView from "./components/AnalyticsView";
 const AdminPortal = () => {
   const [activeTab, setActiveTab] = useState("Home");
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -43,8 +43,8 @@ const AdminPortal = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "Home": return <HomeView admin={admin} />;
-      case "Analytics": return <AnalyticsView />;
-      case "Student Details": return <StudentsView />;
+      case "Analytics": return <AnalyticsView  admin={admin}/>;
+      // case "Student Details": return <StudentsView />;
       case "Profile": return <ProfileSettingsView admin={admin} setAdmin={setAdmin} />;
       default: return <HomeView admin={admin} />;
     }

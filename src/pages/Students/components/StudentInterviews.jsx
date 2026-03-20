@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axiosInstance from "../../../config/AxiosConfig";
-import jsPDF from "jspdf";
+import jsPDF from "jsPDF";
 import "jspdf-autotable";
 import { 
     Video, Calendar, Clock, CheckCircle, ExternalLink, 
@@ -49,8 +49,9 @@ const StudentInterviews = ({ currentUser }) => {
                 const res = await axiosInstance.get(`/api/student/my-interviews?email=${currentUser.email}`);
                 setInterviews(Array.isArray(res.data) ? res.data : []);
                 
-                const savedHistory = localStorage.getItem(`mock_history_${currentUser.email}`);
-                if (savedHistory) setMockHistory(JSON.parse(savedHistory));
+                // Fetch Mock History from DB
+                const histRes = await axiosInstance.get(`/api/student/simulation/history?email=${currentUser.email}`);
+                setMockHistory(histRes.data);
             } catch (err) { console.error(err); } finally { setLoading(false); }
         };
         fetchData();
@@ -86,17 +87,6 @@ const StudentInterviews = ({ currentUser }) => {
         return () => clearInterval(timer);
     }, [timeLeft, simStep, simMode]);
 
-    // --- HELPERS FOR TABS ---
-    const isPast = (date, time) => {
-        if (!date || !time) return false;
-        const interviewDateTime = new Date(`${date}T${time}`);
-        const bufferTime = new Date(interviewDateTime.getTime() + 60 * 60000); 
-        return bufferTime < new Date();
-    };
-
-    const upcomingSessions = interviews.filter(i => !isPast(i.interviewDate, i.interviewTime));
-    const historySessions = interviews.filter(i => isPast(i.interviewDate, i.interviewTime));
-
     // --- INTERVIEW LOGIC HANDLERS ---
     const startInterview = async () => {
         if (!simConfig.jdText.trim()) return alert("Please provide a Job Description.");
@@ -129,7 +119,6 @@ const StudentInterviews = ({ currentUser }) => {
             setSimStep("ongoing");
         } catch (err) { alert("Generation error."); } finally { setIsSubmitting(false); }
     };
-
 
     const handleStep = async () => {
         if (isListening) recognitionRef.current.stop();
@@ -168,43 +157,22 @@ const StudentInterviews = ({ currentUser }) => {
                 const avgScore = updatedSession.reduce((acc, curr) => acc + curr.score, 0) / updatedSession.length;
                 setFinalScore(avgScore);
                 
-                // --- NEW: SAVE TO DATABASE ---
                 const savePayload = {
                     email: currentUser.email,
                     score: avgScore,
-                    jd: simConfig.jdText.substring(0, 100), // First 100 chars
-                    details: updatedSession // This is the array of Q&A
+                    jd: simConfig.jdText.substring(0, 100),
+                    details: updatedSession
                 };
 
                 try {
                     const saveRes = await axiosInstance.post("/api/student/simulation/save-history", savePayload);
-                    // Update local history state with the newly saved item from DB
                     setMockHistory(prev => [saveRes.data, ...prev]);
-                } catch (err) {
-                    console.error("Database save failed, using local storage fallback.");
-                }
+                } catch (err) { console.error("Database save failed."); }
                 
                 setSimStep("result");
             }
-        } catch (err) { 
-            alert("Evaluation error."); 
-        } finally { 
-            setIsSubmitting(false); 
-        }
+        } catch (err) { alert("Evaluation error."); } finally { setIsSubmitting(false); }
     };
-
-    // --- Update the History Tab Fetch ---
-    useEffect(() => {
-        const fetchHistory = async () => {
-            if (currentUser?.email) {
-                try {
-                    const res = await axiosInstance.get(`/api/student/simulation/history?email=${currentUser.email}`);
-                    setMockHistory(res.data);
-                } catch (err) { console.error("Error fetching mock history"); }
-            }
-        };
-        fetchHistory();
-    }, [currentUser, simStep]); // Refresh history when a simulation finishes
 
     const downloadReport = (sessionData = sessionHistory, score = finalScore) => {
         const doc = new jsPDF();
@@ -215,7 +183,7 @@ const StudentInterviews = ({ currentUser }) => {
         doc.text(`Overall Performance: ${(score * 100).toFixed(2)}%`, 14, 45);
 
         const tableColumn = ["#", "Question", "Your Response", "Score"];
-        const tableRows = sessionData.map((item, index) => [
+        const tableRows = (typeof sessionData === 'string' ? JSON.parse(sessionData) : sessionData).map((item, index) => [
             index + 1, item.question, item.answer, `${(item.score * 100).toFixed(0)}%`
         ]);
 
@@ -229,11 +197,21 @@ const StudentInterviews = ({ currentUser }) => {
         doc.save(`Report_${currentUser.fullName}.pdf`);
     };
 
+    // --- HELPERS FOR FILTERING ---
+    const isPast = (date, time) => {
+        if (!date || !time) return false;
+        const interviewDateTime = new Date(`${date}T${time}`);
+        const bufferTime = new Date(interviewDateTime.getTime() + 60 * 60000); 
+        return bufferTime < new Date();
+    };
+
+    const upcomingSessions = interviews.filter(i => !isPast(i.interviewDate, i.interviewTime));
+    const historySessions = interviews.filter(i => isPast(i.interviewDate, i.interviewTime));
+
     if (loading) return <div className="flex justify-center items-center h-[500px]"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>;
 
     return (
         <div className="animate-fade-in space-y-6 p-4">
-            {/* TABS NAVIGATION */}
             {simStep !== "ongoing" && (
                 <div className="flex gap-1 ml-4 overflow-x-auto no-scrollbar">
                     <button onClick={() => setActiveTab("sessions")} className={`px-10 py-4 rounded-t-[1.5rem] font-black text-sm flex items-center gap-2 ${activeTab === 'sessions' ? 'bg-white text-indigo-600 border-2 border-slate-100' : 'bg-slate-100 text-slate-500'}`}><PlayCircle size={18} /> Sessions</button>
@@ -244,14 +222,13 @@ const StudentInterviews = ({ currentUser }) => {
 
             <div className="bg-white dark:bg-slate-900 rounded-[3rem] border-2 border-slate-100 dark:border-slate-800 p-10 shadow-2xl min-h-[600px]">
                 
-                {/* --- SIMULATE TAB --- */}
                 {activeTab === "simulate" && (
                     <div className="animate-in fade-in duration-500">
                         {simStep === "start" && (
                             <div className="text-center py-20 bg-rose-50/30 rounded-[3rem] border-2 border-dashed border-rose-200">
                                 <Sparkles className="mx-auto text-rose-500 mb-4" size={56} />
                                 <h2 className="text-5xl font-black italic mb-4">AI Interview Lab</h2>
-                                <button onClick={() => setSimStep("select")} className="bg-rose-500 text-white px-16 py-6 rounded-[2.5rem] font-black text-2xl shadow-2xl transition-all hover:scale-105">START LAB</button>
+                                <button onClick={() => setSimStep("select")} className="bg-rose-500 text-white px-16 py-6 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-105">START LAB</button>
                             </div>
                         )}
 
@@ -271,16 +248,22 @@ const StudentInterviews = ({ currentUser }) => {
                                 <div className="grid md:grid-cols-2 gap-8">
                                     <div className={`space-y-4 ${simMode === 'adaptive' ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
                                         <label className="text-xs font-black uppercase text-slate-500">Time Per Question</label>
-                                        <select value={simConfig.timePerQuestion} onChange={(e) => setSimConfig({...simConfig, timePerQuestion: parseInt(e.target.value)})} className="w-full bg-slate-50 border-2 rounded-2xl p-5 font-bold outline-none"><option value={60}>60s</option><option value={120}>120s</option></select>
+                                        <select value={simConfig.timePerQuestion} onChange={(e) => setSimConfig({...simConfig, timePerQuestion: parseInt(e.target.value)})} className="w-full bg-slate-50 border-2 rounded-2xl p-5 font-bold outline-none border-slate-100">
+                                            <option value={30}>30s</option>
+                                            <option value={60}>60s</option>
+                                            <option value={90}>90s</option>
+                                            <option value={120}>120s</option>
+                                            <option value={150}>150s</option>
+                                        </select>
                                     </div>
                                     <div className="space-y-4">
                                         <label className="text-xs font-black uppercase text-slate-500">Number of Questions</label>
-                                        <input type="number" min="1" max="10" value={simConfig.numQuestions} onChange={(e) => setSimConfig({...simConfig, numQuestions: e.target.value})} className="w-full bg-slate-50 border-2 rounded-2xl p-5 font-bold outline-none" />
+                                        <input type="number" min="1" max="10" value={simConfig.numQuestions} onChange={(e) => setSimConfig({...simConfig, numQuestions: e.target.value})} className="w-full bg-slate-50 border-2 rounded-2xl p-5 font-bold outline-none border-slate-100" />
                                     </div>
                                 </div>
                                 <div className="space-y-4">
                                     <label className="text-xs font-black uppercase text-slate-500">Job Description (JD)</label>
-                                    <textarea placeholder="Paste requirements here..." value={simConfig.jdText} onChange={(e) => setSimConfig({...simConfig, jdText: e.target.value})} className="w-full h-44 bg-slate-50 border-2 rounded-[2.2rem] p-8 font-bold outline-none resize-none shadow-inner" />
+                                    <textarea placeholder="Paste requirements here..." value={simConfig.jdText} onChange={(e) => setSimConfig({...simConfig, jdText: e.target.value})} className="w-full h-44 bg-slate-50 border-2 rounded-[2.2rem] p-8 font-bold outline-none resize-none shadow-inner border-slate-100" />
                                 </div>
                                 <button onClick={startInterview} disabled={isSubmitting} className="w-full bg-indigo-600 text-white py-6 rounded-[2rem] font-black text-2xl flex items-center justify-center gap-4 hover:bg-indigo-700 shadow-xl transition-all">{isSubmitting ? <><Loader2 className="animate-spin" /> GENERATING...</> : "START NOW"}</button>
                             </div>
@@ -318,19 +301,6 @@ const StudentInterviews = ({ currentUser }) => {
                                     <button onClick={() => downloadReport()} className="bg-white border-4 border-indigo-600 text-indigo-600 px-10 py-5 rounded-2xl font-black flex items-center gap-3"><Download /> DOWNLOAD PDF</button>
                                     <button onClick={() => setSimStep("start")} className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black flex items-center gap-4 mx-auto hover:scale-105 transition-all"><RotateCcw size={24} /> RETRY LAB</button>
                                 </div>
-                                <div className="max-w-4xl mx-auto space-y-6 text-left">
-                                    <div className="p-8 bg-indigo-50 rounded-[2.5rem] border-2 border-indigo-100">
-                                        <h4 className="text-indigo-600 font-black mb-4 flex items-center gap-2 uppercase tracking-widest text-sm"><Percent size={18}/> Job Match Analysis</h4>
-                                        <p className="text-slate-700 font-bold mb-2">Matched: <span className="text-green-600">{skillAnalysis.matched.join(", ")}</span></p>
-                                        <p className="text-slate-700 font-bold">Missing: <span className="text-rose-500">{skillAnalysis.missing.join(", ")}</span></p>
-                                    </div>
-                                    {sessionHistory.map((item, i) => (
-                                        <div key={i} className="p-8 bg-slate-50 dark:bg-slate-800 p-10 rounded-[3rem] border border-slate-200">
-                                            <div className="flex justify-between mb-4 items-start"><h4 className="text-2xl font-black max-w-lg italic">Q: {item.question}</h4><div className="bg-white dark:bg-slate-900 px-6 py-3 rounded-2xl font-black text-indigo-600 text-xl border">{(item.score * 100).toFixed(0)}%</div></div>
-                                            <p className="text-slate-400 font-bold text-sm leading-relaxed">A: {item.answer}</p>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         )}
                     </div>
@@ -358,11 +328,11 @@ const StudentInterviews = ({ currentUser }) => {
                                 <div key={idx} className="bg-slate-50 dark:bg-slate-800 p-8 rounded-[2rem] border-2 flex items-center justify-between group hover:border-indigo-300 transition-all">
                                     <div className="flex items-center gap-6">
                                         <div className="p-5 bg-white text-indigo-600 rounded-3xl shadow-sm"><FileText size={28} /></div>
-                                        <div><h3 className="text-xl font-black italic uppercase">{mock.mode} MOCK LAB</h3><p className="text-slate-400 font-bold text-xs uppercase tracking-tighter">{mock.date} • {mock.jd}</p></div>
+                                        <div><h3 className="text-xl font-black italic uppercase">MOCK LAB SESSION</h3><p className="text-slate-400 font-bold text-xs uppercase tracking-tighter">{mock.createdAt?.split('T')[0] || mock.date} • {mock.jdSummary}</p></div>
                                     </div>
                                     <div className="flex items-center gap-6">
-                                        <span className="text-2xl font-black text-indigo-600">{(mock.score * 100).toFixed(0)}%</span>
-                                        <button onClick={() => downloadReport(mock.details, mock.score)} className="p-4 bg-indigo-600 text-white rounded-2xl hover:scale-110 transition-transform"><Download size={20}/></button>
+                                        <span className="text-2xl font-black text-indigo-600">{(mock.overallScore * 100).toFixed(0)}%</span>
+                                        <button onClick={() => downloadReport(mock.interviewDetailsJson, mock.overallScore)} className="p-4 bg-indigo-600 text-white rounded-2xl hover:scale-110 transition-transform"><Download size={20}/></button>
                                     </div>
                                 </div>
                             ))}
@@ -372,7 +342,6 @@ const StudentInterviews = ({ currentUser }) => {
                                     <span className="bg-green-100 text-green-700 px-8 py-3 rounded-2xl text-xs font-black uppercase">Successful</span>
                                 </div>
                             ))}
-                            {mockHistory.length === 0 && historySessions.length === 0 && <EmptyState icon={<History />} message="No interview history logs found." />}
                         </div>
                     </div>
                 )}

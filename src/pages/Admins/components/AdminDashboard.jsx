@@ -41,9 +41,6 @@ const DetailRow = ({ label, value }) => (
   </div>
 );
 
-export const AnalyticsView = () => (
-    <div className="p-10 text-center text-slate-400 italic font-bold">Analytics Charts Loading...</div>
-);
 
 export const StudentsView = () => (
     <div className="p-10 text-center text-slate-400 italic font-bold">Student Records Loading...</div>

@@ -8,7 +8,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, hand
       <nav className="flex-1 space-y-2">
         <TabBtn id="Home" active={activeTab} set={setActiveTab} icon="🏠" label="Home" />
         <TabBtn id="Analytics" active={activeTab} set={setActiveTab} icon="📊" label="Analytics" />
-        <TabBtn id="Student Details" active={activeTab} set={setActiveTab} icon="👨‍🎓" label="Students" />
+        {/* <TabBtn id="Student Details" active={activeTab} set={setActiveTab} icon="👨‍🎓" label="Students" /> */}
         <TabBtn id="Profile" active={activeTab} set={setActiveTab} icon="👤" label="Settings" />
       </nav>
 

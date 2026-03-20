@@ -40,6 +40,7 @@ export const signupAdmin = createAsyncThunk("admin/signup", async (formData, { r
 export const loginAdmin = createAsyncThunk("admin/login", async (credentials, { rejectWithValue }) => {
   try {
     const response = await axiosInstance.post("/api/admin/login", credentials);
+    console.log(response.data);
     return response.data;
   } catch (error) {
     return rejectWithValue(error.response?.data || "Invalid Credentials");

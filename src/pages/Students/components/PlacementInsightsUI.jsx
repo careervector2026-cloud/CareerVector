@@ -13,9 +13,9 @@ const PlacementInsightsUI = ({ activeJobs, currentUser }) => {
   const [showModal, setShowModal] = useState(false);
   
   // Data States
-  const [selectedAnalysis, setSelectedAnalysis] = useState(null); // Readiness
-  const [diagnosisData, setDiagnosisData] = useState(null);      // Diagnosis
-  const [atsData, setAtsData] = useState(null);                  // ATS
+  const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+  const [diagnosisData, setDiagnosisData] = useState(null);
+  const [atsData, setAtsData] = useState(null);
 
   // Manual Input State
   const [manualJD, setManualJD] = useState("");
@@ -26,14 +26,12 @@ const PlacementInsightsUI = ({ activeJobs, currentUser }) => {
       const id = isManual ? "manual" : jobOrManualText.id;
       setAnalyzingId(id);
       
-      // Reset data
       setSelectedAnalysis(null);
       setDiagnosisData(null);
       setAtsData(null);
 
       const jobDescription = isManual ? jobOrManualText : jobOrManualText.description;
       
-      // Determine Payload based on SubTab requirements
       const payload = {
         resume_url: currentUser?.resumeUrl,
         job_description: jobDescription
@@ -44,11 +42,16 @@ const PlacementInsightsUI = ({ activeJobs, currentUser }) => {
         endpoint = '/api/jobs/job-readiness';
         payload.github_url = currentUser?.githubUrl;
         payload.leetcode_username = extractUsername(currentUser?.leetcodeUrl);
+        payload.student_id=currentUser?.rollNumber;
+        payload.college_name=currentUser?.clgName;
       } else if (activeSubTab === "Diagnosis") {
         endpoint = '/api/jobs/failure-diagnosis';
         payload.github_url = currentUser?.githubUrl;
+        payload.leetcode_username = extractUsername(currentUser?.leetcodeUrl);
+        payload.student_id=currentUser?.rollNumber;
+        payload.college_name=currentUser?.clgName;
       } else {
-        endpoint = '/api/jobs/ats-score'; // Spring Proxy to FastAPI
+        endpoint = '/api/jobs/ats-score';
       }
 
       const response = await axiosInstance.post(endpoint, payload);
@@ -79,7 +82,6 @@ const PlacementInsightsUI = ({ activeJobs, currentUser }) => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-10 font-sans transition-colors duration-300">
       
-      {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-indigo-900 dark:text-indigo-400 tracking-tighter uppercase italic">Placement Insights</h1>
@@ -95,14 +97,12 @@ const PlacementInsightsUI = ({ activeJobs, currentUser }) => {
         </button>
       </header>
 
-      {/* Tabs */}
       <div className="flex gap-2 mb-0 ml-4 overflow-x-auto no-scrollbar">
         <TabButton label="Job Readiness" active={activeSubTab === "Readiness"} onClick={() => setActiveSubTab("Readiness")} icon={<Target size={16}/>} color="indigo" />
         <TabButton label="Failure Diagnosis" active={activeSubTab === "Diagnosis"} onClick={() => setActiveSubTab("Diagnosis")} icon={<AlertCircle size={16}/>} color="amber" />
         <TabButton label="ATS Optimizer" active={activeSubTab === "ATS"} onClick={() => setActiveSubTab("ATS")} icon={<ScanSearch size={16}/>} color="emerald" />
       </div>
 
-      {/* Main Bento Area */}
       <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl rounded-tl-none border border-slate-200 dark:border-slate-800 shadow-sm min-h-[500px]">
         {isManualMode ? (
             <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -139,7 +139,6 @@ const PlacementInsightsUI = ({ activeJobs, currentUser }) => {
         )}
       </div>
 
-      {/* Analysis Modal */}
       {showModal && (
         <AnalysisModal 
             show={showModal} 
@@ -171,23 +170,47 @@ const TabButton = ({ label, active, onClick, icon, color }) => {
 };
 
 const JobCard = ({ job, activeSubTab, analyzingId, onAnalyze }) => {
-    const theme = activeSubTab === "Readiness" ? "indigo" : activeSubTab === "Diagnosis" ? "amber" : "emerald";
+    // Lookup object to fix dynamic Tailwind class generation issue
+    const themeMap = {
+        Readiness: {
+            text: "text-indigo-600",
+            bg: "bg-indigo-600 hover:bg-indigo-700",
+            border: "hover:border-indigo-400"
+        },
+        Diagnosis: {
+            text: "text-amber-600",
+            bg: "bg-amber-600 hover:bg-amber-700",
+            border: "hover:border-amber-400"
+        },
+        ATS: {
+            text: "text-emerald-600",
+            bg: "bg-emerald-600 hover:bg-emerald-700",
+            border: "hover:border-emerald-400"
+        }
+    };
+
+    const currentTheme = themeMap[activeSubTab] || themeMap.Readiness;
+
     return (
-        <div className={`p-8 rounded-[3rem] border-2 transition-all flex flex-col group bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 hover:border-${theme}-400`}>
+        <div className={`p-8 rounded-[3rem] border-2 transition-all flex flex-col group bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 ${currentTheme.border}`}>
             <div className="flex justify-between items-start mb-6">
                 <div className="p-4 rounded-3xl bg-white dark:bg-slate-800 text-slate-300 group-hover:text-indigo-500 transition-colors shadow-sm">
                     <Building2 size={24} />
                 </div>
             </div>
             <h3 className="font-black text-xl text-slate-900 dark:text-slate-100 mb-1 leading-tight">{job.jobTitle}</h3>
-            <p className={`font-black text-sm mb-6 text-${theme}-600`}>{job.recruiter?.companyName}</p>
+            <p className={`font-black text-sm mb-6 ${currentTheme.text}`}>{job.recruiter?.companyName}</p>
             <div className="space-y-3 mb-8 text-slate-400 text-xs font-black uppercase">
                 <div className="flex items-center gap-3"><MapPin size={16} /> {job.location}</div>
                 <div className="flex items-center gap-3"><Calendar size={16} /> {new Date(job.postedAt).toLocaleDateString()}</div>
             </div>
-            <button onClick={onAnalyze} disabled={analyzingId === job.id} className={`mt-auto w-full py-5 rounded-2xl font-black text-xs uppercase text-white transition-all flex items-center justify-center gap-3 shadow-xl ${analyzingId === job.id ? "bg-slate-400" : `bg-${theme}-600 hover:bg-${theme}-700`}`}>
+            <button 
+                onClick={onAnalyze} 
+                disabled={analyzingId === job.id} 
+                className={`mt-auto w-full py-5 rounded-2xl font-black text-xs uppercase text-white transition-all flex items-center justify-center gap-3 shadow-xl ${analyzingId === job.id ? "bg-slate-400" : currentTheme.bg}`}
+            >
                 {analyzingId === job.id ? <Loader2 size={18} className="animate-spin" /> : <BarChart3 size={18} />}
-                {analyzingId === job.id ? "Processing..." : "Analyze Profile"}
+                <span>{analyzingId === job.id ? "Processing..." : "Analyze Profile"}</span>
             </button>
         </div>
     );
@@ -204,7 +227,6 @@ const AnalysisModal = ({ show, onClose, activeSubTab, selectedAnalysis, diagnosi
             </div>
             
             <div className="p-10 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                {/* --- READINESS --- */}
                 {activeSubTab === "Readiness" && selectedAnalysis && (
                     <div className="space-y-10">
                         <div className="flex flex-col items-center">
@@ -220,7 +242,6 @@ const AnalysisModal = ({ show, onClose, activeSubTab, selectedAnalysis, diagnosi
                     </div>
                 )}
 
-                {/* --- DIAGNOSIS --- */}
                 {activeSubTab === "Diagnosis" && diagnosisData && (
                     <div className="space-y-8">
                         {diagnosisData.message ? (
@@ -243,7 +264,6 @@ const AnalysisModal = ({ show, onClose, activeSubTab, selectedAnalysis, diagnosi
                     </div>
                 )}
 
-                {/* --- ATS SCANNER (CURRENT IMPLEMENTATION) --- */}
                 {activeSubTab === "ATS" && atsData && (
                     <div className="space-y-10">
                         <div className="flex flex-col items-center">

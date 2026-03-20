@@ -35,6 +35,7 @@ export const signupUser = createAsyncThunk(
   "student/signup",
   async (formData, { rejectWithValue }) => {
     try {
+      // console.log(formData)
       const response = await axiosInstance.post("/api/student/signup", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
