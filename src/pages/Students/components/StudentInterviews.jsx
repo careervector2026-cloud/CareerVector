@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import axiosInstance from "../../../config/AxiosConfig";
-import jsPDF from "jsPDF";
-import "jspdf-autotable";
+// ✅ Correct (Lowercase to match package.json)
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { 
     Video, Calendar, Clock, CheckCircle, ExternalLink, 
     Loader2, History, PlayCircle, MonitorPlay, Sparkles,
