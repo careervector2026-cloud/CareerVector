@@ -33,11 +33,7 @@ const Candidates = () => {
         try {
             const res = await axiosInstance.get(`/api/jobs/my-jobs?email=${email}`);
             setJobs(Array.isArray(res.data) ? res.data : []);
-        } catch (err) { 
-            console.error("Fetch Jobs Error:", err); 
-        } finally { 
-            setLoading(false); 
-        }
+        } catch (err) { console.error("Fetch Jobs Error:", err); } finally { setLoading(false); }
     };
 
     const fetchCandidates = async (jobId) => {
@@ -45,11 +41,7 @@ const Candidates = () => {
         try {
             const res = await axiosInstance.get(`/api/jobs/${jobId}/candidates?email=${email}`);
             setApplicants(Array.isArray(res.data) ? res.data : []);
-        } catch (err) { 
-            console.error("Fetch Candidates Error:", err); 
-        } finally { 
-            setLoading(false); 
-        }
+        } catch (err) { console.error("Fetch Candidates Error:", err); } finally { setLoading(false); }
     };
 
     useEffect(() => { if (email) fetchMyJobs(); }, [email]);
@@ -58,48 +50,48 @@ const Candidates = () => {
     const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
     const isJobLocked = applicants.some(app => app.mailSent);
+    const pendingReviewNotifications = applicants.filter(app => !app.mailSent && (app.status === 'SHORTLISTED' || app.status === 'REJECTED')).length;
 
-    // --- 5. AI SHORTLIST LOGIC (UPDATED TO MATCH ROLL NUMBER) ---
+    // --- 5. AI SHORTLIST LOGIC ---
     const handleShorlist = async () => {
-    if (!window.confirm("Run AI Shortlist? This will analyze candidates and update statuses.")) return;
-    setActionLoading(true);
-    try {
-        const res = await axiosInstance.post(`/api/jobs/${selectedJob.id}/shortlist?email=${email}`);
-        const aiResults = res.data; // This is the JSON array you just showed me
+        if (!window.confirm("Run AI Shortlist? This will analyze candidates using FastAPI and update statuses.")) return;
+        setActionLoading(true);
+        try {
+            // This triggers your Spring Boot backend which calls FastAPI
+            const res = await axiosInstance.post(`/api/jobs/${selectedJob.id}/shortlist?email=${email}`);
+            const aiResults = res.data; 
 
-        if (aiResults && Array.isArray(aiResults)) {
-            setApplicants(currentApps => currentApps.map(app => {
-                // FIX: Match student_id (Roll Number) from AI to rollNumber in app state
-                const aiMatch = aiResults.find(r => 
-                    r?.student_id?.toString().trim() === app?.student?.rollNumber?.toString().trim()
-                );
-                
-                if (aiMatch) {
-                    let newStatus = app.status;
-                    const aiStatus = aiMatch.status?.toLowerCase();
+            if (aiResults && Array.isArray(aiResults)) {
+                // Manually update the local state with AI results for immediate feedback
+                setApplicants(currentApps => currentApps.map(app => {
+                    const aiMatch = aiResults.find(r => r.student_id.toLowerCase() === app.student.rollNumber.toLowerCase());
+                    
+                    if (aiMatch) {
+                        let newStatus = app.status;
+                        const aiStatus = aiMatch.status.toLowerCase();
 
-                    // Correctly map AI labels to your Backend Status strings
-                    if (aiStatus === 'shortlist') newStatus = 'SHORTLISTED';
-                    else if (aiStatus === 'reject') newStatus = 'REJECTED';
-                    else if (aiStatus === 'review') newStatus = 'UNDER_REVIEW';
+                        // Mapping AI response to local UI constants
+                        if (aiStatus === 'shortlist') newStatus = 'SHORTLISTED';
+                        else if (aiStatus === 'reject') newStatus = 'REJECTED';
+                        else if (aiStatus === 'review') newStatus = 'UNDER_REVIEW';
 
-                    return {
-                        ...app,
-                        matchScore: aiMatch.final_score, // e.g., 0.56
-                        status: newStatus 
-                    };
-                }
-                return app; // No match found, keep as PENDING
-            }));
-            alert("AI Shortlisting applied successfully! Check the scores and statuses below.");
+                        return {
+                            ...app,
+                            matchScore: aiMatch.final_score,
+                            status: newStatus 
+                        };
+                    }
+                    return app;
+                }));
+                alert("AI Shortlisting applied successfully! Results updated in view.");
+            }
+        } catch (err) {
+            console.error("AI Error:", err);
+            alert("Shortlisting failed. Ensure FastAPI service is running.");
+        } finally {
+            setActionLoading(false);
         }
-    } catch (err) {
-        console.error("AI Error:", err);
-        alert("Shortlisting failed. Check FastAPI connection.");
-    } finally {
-        setActionLoading(false);
-    }
-};
+    };
 
     // --- 6. INTERVIEW SCHEDULING LOGIC ---
     const openInterviewModal = (type, singleApp = null) => {
@@ -108,7 +100,7 @@ const Candidates = () => {
 
         if (type === 'one-on-one') {
             participants = [singleApp];
-            roomSuffix = singleApp.student?.rollNumber || "Student";
+            roomSuffix = singleApp.student.rollNumber;
         } else {
             participants = applicants.filter(app => selectedIds.includes(app.id));
             roomSuffix = `Group-${Date.now()}`;
@@ -117,7 +109,7 @@ const Candidates = () => {
         if (participants.length === 0) return alert("Select candidates first!");
 
         const roomName = `CV-${selectedJob.id}-${roomSuffix}`;
-        const jitsiLink = `https://meet.jit.si/${roomName}`; 
+        const jitsiLink = `https://meet.jit.si/${roomName}`; // Jitsi Room Link
         
         setSchedulingData({ 
             participants, 
@@ -143,11 +135,8 @@ const Candidates = () => {
             alert(`Interview Scheduled! Links sent to ${schedulingData.participants.length} candidates.`);
             setIsModalOpen(false);
             setSelectedIds([]);
-        } catch (err) { 
-            alert("Error scheduling interview."); 
-        } finally { 
-            setActionLoading(false); 
-        }
+        } catch (err) { alert("Error scheduling interview."); }
+        finally { setActionLoading(false); }
     };
 
     // --- 7. OTHER ACTION HANDLERS ---
@@ -155,36 +144,45 @@ const Candidates = () => {
         try {
             await axiosInstance.patch(`/api/jobs/applications/${appId}/status?status=${newStatus}`);
             setApplicants(prev => prev.map(app => app.id === appId ? { ...app, status: newStatus } : app));
-        } catch (err) { 
-            alert(err.response?.data?.message || "Action blocked."); 
-        }
+        } catch (err) { alert(err.response?.data?.message || "Action blocked."); }
     };
 
     const handleFinalize = async () => {
-        if (!window.confirm("Finalize Job: This will close the job and notify candidates via email. Statuses will be locked. Continue?")) return;
+        if (!window.confirm("Finalize Job: This will close the job and notify candidates. Continue?")) return;
         setActionLoading(true);
         try {
             await axiosInstance.post(`/api/jobs/${selectedJob.id}/finalize?email=${email}`);
-            alert("Job Finalized and Notifications Dispatched!");
+            alert("Job Finalized Successfully!");
             fetchCandidates(selectedJob.id);
-        } catch (err) { 
-            alert("Finalization failed."); 
-        } finally { 
-            setActionLoading(false); 
-        }
+        } catch (err) { alert("Finalization failed."); }
+        finally { setActionLoading(false); }
     };
 
-    // --- FILTER & SORT LOGIC ---
     const filteredAndSorted = [...applicants]
-        .filter(app => {
-            const name = app.student?.fullName?.toLowerCase() || "";
-            const roll = app.student?.rollNumber?.toLowerCase() || "";
-            const search = candidateSearch.toLowerCase();
-            return name.includes(search) || roll.includes(search);
-        })
+        .filter(app => app.student?.fullName?.toLowerCase().includes(candidateSearch.toLowerCase()) || app.student?.rollNumber?.includes(candidateSearch))
         .sort((a, b) => (parseFloat(b.matchScore) || 0) - (parseFloat(a.matchScore) || 0));
 
     if (loading && !selectedJob) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-indigo-600" size={40} /></div>;
+    // --- Inside Candidates component ---
+
+// 1. Add the handler function
+    const handleNotifyReviewed = async () => {
+        if (!window.confirm(`Send status updates to ${pendingReviewNotifications} candidates?`)) return;
+        
+        setActionLoading(true);
+        try {
+            await axiosInstance.post(`/api/jobs/${selectedJob.id}/notify-reviewed?email=${email}`);
+            alert("Notification emails sent successfully!");
+            
+            // Refresh the candidates list to update 'mailSent' flags locally
+            fetchCandidates(selectedJob.id); 
+        } catch (err) {
+            console.error("Notify Error:", err);
+            alert("Failed to send notifications.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
 
     return (
         <div className="animate-fade-in space-y-6">
@@ -195,17 +193,17 @@ const Candidates = () => {
                         <Briefcase className="text-indigo-600" /> My Postings
                     </h1>
                     <div className="grid gap-4">
-                        {jobs.length > 0 ? jobs.map(job => (
+                        {jobs.map(job => (
                             <div key={job.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex justify-between items-center hover:border-indigo-400 transition-all">
                                 <div>
                                     <h2 className="text-xl font-bold dark:text-white">{job.jobTitle}</h2>
-                                    <p className="text-sm text-slate-500">📍 {job.location} | {job.isActive ? "🟢 Open" : "🔴 Closed"}</p>
+                                    <p className="text-sm text-slate-500">📍 {job.location}</p>
                                 </div>
                                 <button onClick={() => { setSelectedJob(job); fetchCandidates(job.id); }} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700">
                                     View Candidates
                                 </button>
                             </div>
-                        )) : <p className="text-slate-500 text-center py-10">No jobs posted yet.</p>}
+                        ))}
                     </div>
                 </div>
             ) : (
@@ -228,10 +226,7 @@ const Candidates = () => {
                     </div>
 
                     <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="flex flex-col">
-                            <h2 className="text-xl font-bold dark:text-white">Applicants for <span className="text-indigo-600">{selectedJob.jobTitle}</span></h2>
-                            <p className="text-xs text-slate-500">Total: {applicants.length} candidates</p>
-                        </div>
+                        <h2 className="text-xl font-bold dark:text-white">Applied to <span className="text-indigo-600">{selectedJob.jobTitle}</span></h2>
                         <div className="flex gap-3">
                             {selectedIds.length > 0 && (
                                 <button onClick={() => openInterviewModal('group')} className="bg-purple-600 text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg animate-in slide-in-from-right-2">
@@ -246,14 +241,23 @@ const Candidates = () => {
                                 {isJobLocked ? <Lock size={18} /> : (actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />)}
                                 {isJobLocked ? "Job Finalized" : "Finalize & Notify All"}
                             </button>
+                            {pendingReviewNotifications > 0 && (
+                                <button 
+                                    onClick={handleNotifyReviewed} 
+                                    disabled={actionLoading}
+                                    className="flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-sm bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-lg animate-in fade-in zoom-in"
+                                >
+                                    {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Mail size={18} />}
+                                    Notify Reviewed ({pendingReviewNotifications})
+                            </button>
+                            )}
                         </div>
                     </div>
 
                     <div className="grid gap-4">
-                        {filteredAndSorted.length > 0 ? filteredAndSorted.map(app => (
+                        {filteredAndSorted.map(app => (
                             <div key={app.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 transition-all hover:border-indigo-200">
                                 <div className="flex items-center gap-4 w-full">
-                                    {/* Selectable only if shortlisted and notified */}
                                     {app.status === 'SHORTLISTED' && app.mailSent && (
                                         <button onClick={() => toggleSelect(app.id)} className="text-indigo-600 transition-transform active:scale-90">
                                             {selectedIds.includes(app.id) ? <CheckSquare size={24} /> : <Square size={24} className="text-slate-300 dark:text-slate-700" />}
@@ -262,14 +266,14 @@ const Candidates = () => {
                                     <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 shrink-0"><User size={24} /></div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
-                                            <h4 className="font-bold dark:text-white">{app.student?.fullName || "No Name"}</h4>
+                                            <h4 className="font-bold dark:text-white">{app.student.fullName}</h4>
                                             {app.matchScore && (
                                                 <span className="bg-purple-50 dark:bg-purple-900/20 text-purple-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-purple-100 dark:border-purple-800">
-                                                    {(Number(app.matchScore) * (Number(app.matchScore) <= 1 ? 100 : 1)).toFixed(0)}% Match
+                                                    {(Number(app.matchScore) * 100).toFixed(0)}% Match
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">{app.student?.email} | {app.student?.rollNumber} | {app.student?.clgName || "SR University"}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">{app.student.email} | {app.student.rollNumber}</p>
                                     </div>
                                 </div>
 
@@ -285,81 +289,90 @@ const Candidates = () => {
                                         app.status === 'UNDER_REVIEW' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30' : 
                                         'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30'
                                     }`}>
-                                        {(app.status || "PENDING").replace('_', ' ')}
+                                        {app.status.replace('_', ' ')}
                                     </span>
+                                    <a href={app.student.resumeUrl} target="_blank" rel="noreferrer" className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700" title="Resume"><FileText size={18} /></a>
                                     
-                                    <a href={app.student?.resumeUrl} target="_blank" rel="noreferrer" className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700" title="Resume">
-                                        <FileText size={18} />
-                                    </a>
-                                    
-                                    {!app.mailSent && !isJobLocked && (
+                                    {!app.mailSent && (
                                         <div className="flex gap-1">
-                                            <button onClick={() => handleStatusUpdate(app.id, 'SHORTLISTED')} className="p-2 bg-green-500 text-white rounded-lg transition-colors hover:bg-green-600" title="Shortlist"><CheckCircle size={18} /></button>
-                                            <button onClick={() => handleStatusUpdate(app.id, 'UNDER_REVIEW')} className="p-2 bg-purple-500 text-white rounded-lg transition-colors hover:bg-purple-600" title="Hold/Review"><HelpCircle size={18} /></button>
-                                            <button onClick={() => handleStatusUpdate(app.id, 'REJECTED')} className="p-2 bg-red-500 text-white rounded-lg transition-colors hover:bg-red-600" title="Reject"><XCircle size={18} /></button>
+                                            <button onClick={() => handleStatusUpdate(app.id, 'SHORTLISTED')} className="p-2 bg-green-500 text-white rounded-lg transition-colors hover:bg-green-600"><CheckCircle size={18} /></button>
+                                            <button onClick={() => handleStatusUpdate(app.id, 'UNDER_REVIEW')} className="p-2 bg-purple-500 text-white rounded-lg transition-colors hover:bg-purple-600"><HelpCircle size={18} /></button>
+                                            <button onClick={() => handleStatusUpdate(app.id, 'REJECTED')} className="p-2 bg-red-500 text-white rounded-lg transition-colors hover:bg-red-600"><XCircle size={18} /></button>
                                         </div>
                                     )}
                                 </div>
                             </div>
-                        )) : <p className="text-slate-500 text-center py-10">No applications found.</p>}
+                        ))}
                     </div>
                 </div>
             )}
 
-            {/* --- SCHEDULING MODAL --- */}
+            {/* --- POLISHED INTERVIEW SETUP MODAL --- */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
                         <div className="px-10 py-8 flex justify-between items-center border-b border-slate-100 dark:border-slate-800">
                             <h2 className="text-2xl font-black text-slate-800 dark:text-white">
                                 {schedulingData.participants.length > 1 ? "Group Interview Setup" : "Individual Interview Setup"}
                             </h2>
-                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400">
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
 
                         <div className="px-10 py-8 space-y-8">
-                            <div className="p-6 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-3xl border border-indigo-100/50 dark:border-indigo-800/30">
+                            {/* Selected Participants Box */}
+                            <div className="p-8 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-3xl border border-indigo-100/50 dark:border-indigo-800/30">
                                 <p className="text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-4">Selected Participants</p>
-                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                                <div className="flex flex-wrap gap-2">
                                     {schedulingData.participants.map(p => (
-                                        <span key={p.id} className="bg-indigo-600 text-white px-5 py-2 rounded-2xl text-sm font-bold">
-                                            {p.student?.fullName || "Student"}
+                                        <span key={p.id} className="bg-indigo-600 text-white px-5 py-2 rounded-2xl text-sm font-bold shadow-md">
+                                            {p.student.fullName}
                                         </span>
                                     ))}
                                 </div>
                             </div>
 
+                            {/* Date and Time Pickers */}
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <Calendar size={14} className="text-indigo-400" /> Date
                                     </label>
                                     <input 
                                         type="date" 
                                         value={schedulingData.date} 
                                         onChange={e => setSchedulingData({...schedulingData, date: e.target.value})} 
-                                        className="w-full p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-white font-bold outline-none focus:border-indigo-500"
+                                        className="w-full p-4 rounded-2xl border-2 border-slate-800 dark:border-slate-700 bg-transparent text-slate-800 dark:text-white font-bold outline-none focus:border-indigo-500 transition-colors"
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <Clock size={14} className="text-indigo-400" /> Time
                                     </label>
                                     <input 
                                         type="time" 
                                         value={schedulingData.time} 
                                         onChange={e => setSchedulingData({...schedulingData, time: e.target.value})} 
-                                        className="w-full p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-white font-bold outline-none focus:border-indigo-500"
+                                        className="w-full p-4 rounded-2xl border-2 border-slate-800 dark:border-slate-700 bg-transparent text-slate-800 dark:text-white font-bold outline-none focus:border-indigo-500 transition-colors"
                                     />
+                                </div>
+                            </div>
+
+                            {/* Meeting Link */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <Video size={14} className="text-indigo-400" /> Jitsi Meeting Link
+                                </label>
+                                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs text-slate-400 dark:text-slate-500 font-medium truncate">
+                                    {schedulingData.meetingLink}
                                 </div>
                             </div>
 
                             <button 
                                 onClick={handleConfirmSchedule}
                                 disabled={actionLoading}
-                                className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg flex justify-center items-center gap-4 hover:bg-indigo-700 shadow-2xl transition-all"
+                                className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg flex justify-center items-center gap-4 hover:bg-indigo-700 shadow-2xl shadow-indigo-500/30 dark:shadow-none transform active:scale-[0.98] transition-all"
                             >
                                 {actionLoading ? <Loader2 size={24} className="animate-spin" /> : (
                                     <>
@@ -367,6 +380,10 @@ const Candidates = () => {
                                     </>
                                 )}
                             </button>
+
+                            <p className="text-[10px] text-center text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest mt-4">
+                                Meeting links are powered by Jitsi Meet Open Source.
+                            </p>
                         </div>
                     </div>
                 </div>
