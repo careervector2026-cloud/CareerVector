@@ -1,29 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Target, Users, AlertTriangle, TrendingUp, 
-  BarChart3, CheckCircle2, Activity, Zap, User, Search, ArrowUpRight, ChevronRight, Globe, Filter
+  BarChart3, CheckCircle2, Activity, Zap, User, Search, 
+  ChevronRight, Globe, Filter, Briefcase, XCircle, Clock
 } from 'lucide-react';
 import axiosInstance from '../../../config/AxiosConfig';
+
+// --- CORE UTILITIES (BULLETPROOF LOGIC) ---
+const getStudentStatus = (stats) => {
+  if (stats.hired > 0) return "hired";
+  if (stats.shortlisted > 0 || stats.review > 0) return "pending";
+  return "rejected";
+};
+
+const safePercent = (value, total) => {
+  return total > 0 ? ((value / total) * 100).toFixed(0) : 0;
+};
 
 const AnalyticsView = ({ admin }) => {
   const [loading, setLoading] = useState(true);
   const [progLoading, setProgLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('funnel');
+  const [funnelSubTab, setFunnelSubTab] = useState('level1');
   
   const [students, setStudents] = useState([]);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Filtering States
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentStatusFilter, setStudentStatusFilter] = useState("all");
+
+  const [analyticsData, setAnalyticsData] = useState({
+    funnel: null, topStudents: [], atRisk: [], progression: null, skills: [], marketTrends: []
+  });
+
+  // Filtering States for Gaps and Market
   const [gapSearch, setGapSearch] = useState("");
   const [gapTierFilter, setGapTierFilter] = useState("all");
   const [marketSearch, setMarketSearch] = useState("");
   const [marketTierFilter, setMarketTierFilter] = useState("all");
-
-  const [analyticsData, setAnalyticsData] = useState({
-    funnel: null, topStudents: [], atRisk: [], progression: null, skills: [],
-    marketTrends: []
-  });
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -31,36 +45,34 @@ const AnalyticsView = ({ admin }) => {
       setLoading(true);
       try {
         const college = admin.instituteName;
-        const [funnel, top, risk, skills, studentList, activeJobs] = await Promise.all([
-          axiosInstance.get(`/api/admin/placement-funnel?collegeName=${college}`),
+        const [top, risk, skills, studentList, allJobs] = await Promise.all([
           axiosInstance.get(`/api/admin/top-students?collegeName=${college}`),
           axiosInstance.get(`/api/admin/at-risk-students?collegeName=${college}`),
           axiosInstance.get(`/api/admin/skill-gap-trends?collegeName=${college}`),
           axiosInstance.get(`/api/admin/get-students/${college}`),
-          axiosInstance.get(`/api/admin/get-jobs-active`)
+          axiosInstance.get(`/api/admin/get-all-jobs`)
         ]);
 
-        let marketDemandData = [];
-        if (activeJobs.data && Array.isArray(activeJobs.data)) {
-          const descriptions = activeJobs.data.map(job => job.description || job.jobDescription);
-          try {
-            const demandRes = await axiosInstance.post(`/api/admin/market-demand`, { job_descriptions: descriptions });
-            marketDemandData = Array.isArray(demandRes.data) ? demandRes.data : [];
-          } catch (err) { console.error("Market Demand Error", err); }
-        }
+        const jobList = Array.isArray(allJobs.data) ? allJobs.data : [];
+        const descriptions = jobList.map(job => job.description || "");
+
+        const [funnelRes, demandRes] = await Promise.all([
+          axiosInstance.post(`/api/admin/placement-funnel`, { college_name: college, jd_texts: descriptions }),
+          axiosInstance.post(`/api/admin/market-demand`, { job_descriptions: descriptions })
+        ]);
 
         const fetchedStudents = Array.isArray(studentList.data) ? studentList.data : [];
         setStudents(fetchedStudents);
         if (fetchedStudents.length > 0) setSelectedStudentId(fetchedStudents[0].rollNumber);
 
         setAnalyticsData({
-          funnel: funnel.data,
+          funnel: funnelRes.data,
           topStudents: Array.isArray(top.data) ? top.data : [],
           atRisk: Array.isArray(risk.data) ? risk.data : [],
           skills: Array.isArray(skills.data) ? skills.data : [],
-          marketTrends: marketDemandData
+          marketTrends: Array.isArray(demandRes.data) ? demandRes.data : []
         });
-      } catch (err) { console.error("❌ Sync Error:", err); } 
+      } catch (err) { console.error("Sync Error:", err); } 
       finally { setLoading(false); }
     };
     fetchInitialData();
@@ -73,27 +85,26 @@ const AnalyticsView = ({ admin }) => {
       try {
         const res = await axiosInstance.get(`/api/admin/student-progression/${selectedStudentId}`);
         setAnalyticsData(prev => ({ ...prev, progression: res.data }));
-      } catch (err) { console.error("❌ Prog Error:", err); } 
+      } catch (err) { console.error("Prog Error:", err); } 
       finally { setProgLoading(false); }
     };
     fetchProgression();
   }, [selectedStudentId, activeTab]);
 
-  // Skill Gaps Filtering Logic
+  // Filtering Calculations
   const filteredGaps = analyticsData.skills.filter(s => {
     const matchesSearch = s.skill.toLowerCase().includes(gapSearch.toLowerCase());
     const tier = s.count > 20 ? "critical" : s.count > 10 ? "moderate" : "low";
     return matchesSearch && (gapTierFilter === "all" || tier === gapTierFilter);
   });
 
-  // Market Trends Filtering Logic (Including Low Impact)
   const filteredMarket = analyticsData.marketTrends.filter(m => {
     const matchesSearch = m.skill.toLowerCase().includes(marketSearch.toLowerCase());
     const tier = m.demand_score >= 0.07 ? "vhigh" : m.demand_score >= 0.05 ? "high" : m.demand_score >= 0.035 ? "medium" : "low";
     return matchesSearch && (marketTierFilter === "all" || tier === marketTierFilter);
   });
 
-  const tabs = [
+  const mainTabs = [
     { id: 'funnel', label: 'Funnel', icon: <Target size={16} /> },
     { id: 'top students', label: 'Elite', icon: <Zap size={16} /> },
     { id: 'at risk', label: 'Risk', icon: <AlertTriangle size={16} /> },
@@ -119,9 +130,9 @@ const AnalyticsView = ({ admin }) => {
         </div>
       </div>
 
-      {/* TABS */}
+      {/* MAIN TABS */}
       <div className="flex flex-wrap gap-2 mb-8 p-1.5 bg-slate-200/50 dark:bg-slate-900/60 rounded-2xl w-fit backdrop-blur-xl border border-transparent dark:border-slate-800">
-        {tabs.map((tab) => (
+        {mainTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -139,14 +150,177 @@ const AnalyticsView = ({ admin }) => {
           <div className="py-20 text-center"><Activity className="animate-spin inline text-indigo-500" /></div>
         ) : (
           <>
-            {activeTab === 'funnel' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <MetricCard title="Hiring Ratio" value={`${analyticsData.funnel?.hired_percentage}%`} label="Overall Success" icon={CheckCircle2} color="indigo" />
-                <MetricCard title="Pipeline" value={analyticsData.funnel?.shortlisted_pending} label="In Review" icon={Target} color="emerald" />
-                <MetricCard title="Rejected" value={analyticsData.funnel?.rejected} label="Closed" icon={AlertTriangle} color="rose" />
+            {/* --- FUNNEL SECTION --- */}
+            {activeTab === 'funnel' && analyticsData.funnel && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex gap-8 border-b border-slate-200 dark:border-slate-800 pb-4 overflow-x-auto no-scrollbar">
+                  {[
+                    { id: 'level1', label: '01. Application Level' },
+                    { id: 'level2', label: '02. Student Success' },
+                    { id: 'level3', label: '03. Individual Results' }
+                  ].map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setFunnelSubTab(sub.id)}
+                      className={`text-[10px] font-black uppercase tracking-[0.2em] pb-2 transition-all relative whitespace-nowrap ${
+                        funnelSubTab === sub.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      {sub.label}
+                      {funnelSubTab === sub.id && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600" />}
+                    </button>
+                  ))}
+                </div>
+
+                {/* SUB-TAB 1: APPLICATION LEVEL */}
+                {funnelSubTab === 'level1' && (
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 animate-in slide-in-from-left-4">
+                    <MetricCard title="Total Apps" value={analyticsData.funnel.application_level.total_applications} label="100% Volume" icon={Briefcase} color="indigo" />
+                    <MetricCard 
+                      title="Qualified" 
+                      value={analyticsData.funnel.application_level.shortlisted + analyticsData.funnel.application_level.review} 
+                      label={`${safePercent(analyticsData.funnel.application_level.shortlisted + analyticsData.funnel.application_level.review, analyticsData.funnel.application_level.total_applications)}% Selection`} 
+                      icon={Target} color="emerald" 
+                    />
+                    <MetricCard 
+                      title="Hired" 
+                      value={analyticsData.funnel.application_level.hired} 
+                      label={`${safePercent(analyticsData.funnel.application_level.hired, analyticsData.funnel.application_level.total_applications)}% Final`} 
+                      icon={CheckCircle2} color="indigo" 
+                    />
+                    <MetricCard 
+                      title="Active" 
+                      value={analyticsData.funnel.application_level.total_applications - analyticsData.funnel.application_level.hired - analyticsData.funnel.application_level.rejected} 
+                      label={`${safePercent(analyticsData.funnel.application_level.total_applications - analyticsData.funnel.application_level.hired - analyticsData.funnel.application_level.rejected, analyticsData.funnel.application_level.total_applications)}% In Pipeline`} 
+                      icon={Clock} color="indigo" 
+                    />
+                    <MetricCard 
+                      title="Rejected" 
+                      value={analyticsData.funnel.application_level.rejected} 
+                      label={`${safePercent(analyticsData.funnel.application_level.rejected, analyticsData.funnel.application_level.total_applications)}% Denied`} 
+                      icon={XCircle} color="rose" 
+                    />
+                  </div>
+                )}
+
+                {/* SUB-TAB 2: STUDENT LEVEL OVERALL */}
+                {funnelSubTab === 'level2' && (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-xl animate-in slide-in-from-left-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-12">
+                      <DualMetric title="Total Students" count={analyticsData.funnel.student_level.total_students} percent="100%" color="slate" />
+                      <DualMetric 
+                        title="Placed" 
+                        count={analyticsData.funnel.student_level.hired} 
+                        percent={`${(analyticsData.funnel.student_level.overall_hire_rate * 100).toFixed(1)}%`} 
+                        color="indigo" 
+                      />
+                      <DualMetric 
+                        title="In Process" 
+                        count={analyticsData.funnel.student_level.shortlisted} 
+                        percent={`${safePercent(analyticsData.funnel.student_level.shortlisted, analyticsData.funnel.student_level.total_students)}%`} 
+                        color="emerald" 
+                      />
+                      <DualMetric 
+                        title="Reviewing" 
+                        count={analyticsData.funnel.student_level.review} 
+                        percent={`${safePercent(analyticsData.funnel.student_level.review, analyticsData.funnel.student_level.total_students)}%`} 
+                        color="amber" 
+                      />
+                      <DualMetric 
+                        title="Net Loss" 
+                        count={analyticsData.funnel.student_level.shortlisted - analyticsData.funnel.student_level.hired - analyticsData.funnel.student_level.review} 
+                        percent={`${(analyticsData.funnel.student_level.shortlist_dropoff_rate * 100).toFixed(0)}%`} 
+                        color="rose" 
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-TAB 3: INDIVIDUAL RESULTS */}
+                {funnelSubTab === 'level3' && (
+                  <div className="space-y-6 animate-in slide-in-from-left-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
+                          placeholder="SEARCH STUDENT ID..." 
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2">
+                        <Filter size={14} className="text-slate-400" />
+                        <select 
+                          className="bg-transparent text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 outline-none cursor-pointer"
+                          value={studentStatusFilter}
+                          onChange={(e) => setStudentStatusFilter(e.target.value)}
+                        >
+                          <option value="all">ALL STATUS</option>
+                          <option value="hired">HIRED</option>
+                          <option value="pending">PENDING</option>
+                          <option value="rejected">REJECTED</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-2xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-slate-50 dark:bg-slate-800/50">
+                            <tr>
+                              <th className="p-6 text-[10px] font-black uppercase text-slate-500">Student ID</th>
+                              <th className="p-6 text-[10px] font-black uppercase text-slate-500 text-center">Attempts</th>
+                              <th className="p-6 text-[10px] font-black uppercase text-slate-500 text-center">Qualified</th>
+                              <th className="p-6 text-[10px] font-black uppercase text-slate-500 text-center">Final Result</th>
+                              <th className="p-6 text-[10px] font-black uppercase text-slate-500 text-center">Conversion</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {Object.entries(analyticsData.funnel.students)
+                              .filter(([id]) => id.includes(studentSearch))
+                              .filter(([, stats]) => {
+                                const status = getStudentStatus(stats);
+                                return studentStatusFilter === "all" || status === studentStatusFilter;
+                              })
+                              .map(([id, stats]) => (
+                                <tr key={id} className="hover:bg-indigo-500/5 transition-colors group">
+                                  <td className="p-6 font-mono font-black text-slate-900 dark:text-white">#{id}</td>
+                                  <td className="p-6 text-center font-bold text-slate-600 dark:text-slate-400">{stats.total_applications}</td>
+                                  <td className="p-6 text-center">
+                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${stats.shortlisted + stats.review > 0 ? 'bg-emerald-100 text-emerald-600 border border-emerald-500/10' : 'bg-slate-100 text-slate-400'}`}>
+                                      {stats.shortlisted + stats.review} QS
+                                    </span>
+                                  </td>
+                                  <td className="p-6 text-center">
+                                    {getStudentStatus(stats) === "hired" ? (
+                                      <span className="bg-indigo-600 text-white px-3 py-1 rounded-lg text-[9px] font-black shadow-lg shadow-indigo-500/30">HIRED</span>
+                                    ) : getStudentStatus(stats) === "pending" ? (
+                                      <span className="bg-amber-100 text-amber-600 px-3 py-1 rounded-lg text-[9px] font-black italic">PENDING</span>
+                                    ) : (
+                                      <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase">REJECTED</span>
+                                    )}
+                                  </td>
+                                  <td className="p-6 text-center">
+                                    <div className="flex flex-col items-center gap-1">
+                                      <div className="w-16 bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800">
+                                        <div className={`h-full ${stats.hired > 0 ? 'bg-indigo-500' : 'bg-slate-400'}`} style={{width: `${stats.hired > 0 ? 100 : stats.overall_hire_rate * 100}%`}} />
+                                      </div>
+                                      <p className="text-[10px] font-black text-indigo-500">{(stats.overall_hire_rate * 100).toFixed(0)}%</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
+            {/* --- OTHER TABS (Elite, Risk, Tracker, Gaps, Trends) --- */}
             {(activeTab === 'top students' || activeTab === 'at risk') && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(activeTab === 'top students' ? analyticsData.topStudents : analyticsData.atRisk).map((s, i) => (
@@ -180,8 +354,8 @@ const AnalyticsView = ({ admin }) => {
                   </div>
                 </div>
                 <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 relative shadow-xl overflow-hidden">
-                   {progLoading ? <Activity className="animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 text-indigo-500 w-8 h-8" /> : analyticsData.progression && (
-                     <div className="animate-in fade-in duration-500">
+                    {progLoading ? <Activity className="animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 text-indigo-500 w-8 h-8" /> : analyticsData.progression && (
+                      <div className="animate-in fade-in duration-500">
                         <div className="flex justify-between items-center mb-10">
                           <div>
                             <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] block mb-1">Analytical Node</span>
@@ -198,13 +372,12 @@ const AnalyticsView = ({ admin }) => {
                           ))}
                         </div>
                         <div className="grid grid-cols-2 gap-4"><div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white font-black uppercase">High Confidence Node</div></div>
-                     </div>
-                   )}
+                      </div>
+                    )}
                 </div>
               </div>
             )}
 
-            {/* SKILL GAPS */}
             {activeTab === 'skill gaps' && (
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -241,7 +414,6 @@ const AnalyticsView = ({ admin }) => {
               </div>
             )}
 
-            {/* MARKET TRENDS (With Low Impact Filter Added) */}
             {activeTab === 'market trends' && (
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -276,7 +448,7 @@ const AnalyticsView = ({ admin }) => {
                           <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Market Requirement</p>
                           <h4 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-tight mb-4">{item.skill}</h4>
                           <div className="w-full h-1 rounded-full bg-slate-100 dark:bg-slate-800 mt-4 overflow-hidden">
-                             <div className={`h-full transition-all duration-1000 ${tier.color === 'indigo' ? 'bg-indigo-500' : tier.color === 'emerald' ? 'bg-emerald-500' : tier.color === 'amber' ? 'bg-amber-500' : 'bg-slate-500'}`} style={{ width: `${Math.min(item.demand_score * 1000, 100)}%` }} />
+                             <div className={`h-full transition-all duration-1000 ${tier.color === 'indigo' ? 'bg-indigo-500' : tier.color === 'emerald' ? 'bg-emerald-500' : tier.color === 'amber' ? 'bg-amber-500' : 'bg-slate-500'}`} style={{ width: `${item.demand_score * 100}%` }} />
                           </div>
                         </div>
                     )
@@ -291,7 +463,8 @@ const AnalyticsView = ({ admin }) => {
   );
 };
 
-// HELPER COMPONENTS
+// --- HELPER COMPONENTS ---
+
 const MetricCard = ({ title, value, label, icon: Icon, color }) => {
   const colors = { indigo: "text-indigo-500", emerald: "text-emerald-500", rose: "text-rose-500" };
   return (
@@ -300,6 +473,25 @@ const MetricCard = ({ title, value, label, icon: Icon, color }) => {
       <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">{label}</p>
       <h3 className="text-slate-900 dark:text-white font-black text-md mb-4 uppercase">{title}</h3>
       <div className="text-5xl font-black tracking-tighter bg-gradient-to-br from-indigo-600 to-indigo-400 bg-clip-text text-transparent">{value}</div>
+    </div>
+  );
+};
+
+const DualMetric = ({ title, count, percent, color }) => {
+  const colorMap = {
+    indigo: "text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10",
+    emerald: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10",
+    rose: "text-rose-600 bg-rose-50 dark:bg-rose-500/10",
+    slate: "text-slate-600 bg-slate-50 dark:bg-slate-800",
+    amber: "text-amber-600 bg-amber-50 dark:bg-amber-500/10"
+  };
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
+      <div className="flex items-baseline gap-3">
+        <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{count}</span>
+        <span className={`px-3 py-1 rounded-full text-[10px] font-black ${colorMap[color]}`}>{percent}</span>
+      </div>
     </div>
   );
 };

@@ -86,12 +86,60 @@ const Candidates = () => {
         if (!window.confirm("Run AI Shortlisting?")) return;
         setActionLoading(true);
         try {
-            await axiosInstance.post(`/api/jobs/${selectedJob.id}/shortlist?email=${email}`);
-            fetchCandidates(selectedJob.id);
-            alert("AI Ranking Applied.");
-        } catch (err) { alert("AI Service Error"); } finally { setActionLoading(false); }
+            // Capture the response which contains the new ranks and statuses
+            const res = await axiosInstance.post(`/api/jobs/${selectedJob.id}/shortlist?email=${email}`);
+            
+            if (res.data) {
+                // Option A: Update local state immediately for instant feedback
+                const aiResults = res.data; // This is the List<RankingResponse>
+                
+                setApplicants(prev => prev.map(app => {
+                    const aiMatch = aiResults.find(r => r.student_id === app.student.rollNumber);
+                    if (aiMatch) {
+                        return {
+                            ...app,
+                            matchScore: aiMatch.final_score,
+                            // Map 'shortlist' -> 'SHORTLISTED', etc.
+                            status: aiMatch.status === 'shortlist' ? 'SHORTLISTED' : 
+                                    aiMatch.status === 'reject' ? 'REJECTED' : 
+                                    aiMatch.status === 'review' ? 'UNDER_REVIEW' : app.status
+                        };
+                    }
+                    return app;
+                }));
+                
+                alert("AI Ranking Applied successfully.");
+            }
+        } catch (err) { 
+            alert("AI Service Error: " + err.message); 
+        } finally { 
+            setActionLoading(false); 
+        }
     };
-
+    const handleFinalize = async () => {
+        if (!window.confirm("Finalize Job? This will close the post, run AI ranking, and notify candidates via email.")) return;
+        
+        setActionLoading(true);
+        try {
+            // This hits the 'Master Finalize' endpoint in your Spring Boot JobController
+            await axiosInstance.post(`/api/jobs/${selectedJob.id}/finalize?email=${email}`);
+            
+            // Refresh the jobs list to update the 'active' status
+            await fetchMyJobs();
+            
+            // Refresh the candidate list to show updated AI statuses and 'mailSent' locks
+            await fetchCandidates(selectedJob.id);
+            
+            // Update the local selectedJob state so the UI locks immediately
+            setSelectedJob(prev => ({ ...prev, active: false }));
+            
+            alert("Job finalized and notifications dispatched successfully.");
+        } catch (err) {
+            alert("Finalization failed: " + (err.response?.data?.message || err.message));
+        } finally {
+            setActionLoading(false);
+        }
+    };
     const handleNotifyReviewed = async () => {
         if (!window.confirm(`Send updates to ${pendingReviewNotifications} candidates?`)) return;
         setActionLoading(true);
@@ -181,8 +229,9 @@ const Candidates = () => {
                                 <button onClick={handleNotifyReviewed} className="flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg"><Mail size={18} /> Notify ({pendingReviewNotifications})</button>
                             )}
                             
-                            <button disabled={isJobLocked} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-sm ${isJobLocked ? 'bg-green-100 text-green-700' : 'bg-orange-600 text-white'}`}>
-                                {isJobLocked ? <Lock size={18} /> : <Send size={18} />} {isJobLocked ? "Finalized" : "Finalize Job"}
+                            <button 
+                                onClick={handleFinalize} disabled={isJobLocked || actionLoading} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-sm ${isJobLocked ? 'bg-green-100 text-green-700' : 'bg-orange-600 text-white'}`}
+                            >   {actionLoading ? (<Loader2 className="animate-spin" size={18} />) : ( isJobLocked ? <Lock size={18} /> : <Send size={18} />)} {isJobLocked ? "Finalized" : "Finalize Job"}
                             </button>
                         </div>
                     </div>
