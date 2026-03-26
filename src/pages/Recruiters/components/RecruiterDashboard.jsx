@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../../config/AxiosConfig";
 import { 
     Loader2, Briefcase, Users, CheckCircle, Clock, 
-    Sparkles, Edit, Video, ExternalLink, Calendar 
+    Sparkles, Edit, Video, ExternalLink, Calendar, TrendingUp 
 } from "lucide-react";
 
 const RecruiterDashboard = () => {
@@ -17,24 +17,25 @@ const RecruiterDashboard = () => {
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
-                // 1. Fetch Core Stats
+                // 1. Fetch Stats from the linked Controller (Aggregates Active vs Closed logic)
                 const statsRes = await axiosInstance.get(`/api/jobs/stats?email=${email}`);
                 
-                // 2. Fetch My Jobs
+                // 2. Fetch My Jobs to populate the Recent Activity Table
                 const jobsRes = await axiosInstance.get(`/api/jobs/my-jobs?email=${email}`);
                 
-                // 3. Fetch Recent Applications
                 let allApps = [];
                 for (const job of jobsRes.data) {
                     const appRes = await axiosInstance.get(`/api/jobs/${job.id}/candidates?email=${email}`);
                     allApps = [...allApps, ...appRes.data];
                 }
-                const sortedRecent = allApps.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt)).slice(0, 5);
-
-                // 4. Fetch and Filter Upcoming Interviews
-                const interviewRes = await axiosInstance.get(`/api/recruiter/my-interviews?email=${email}`);
                 
-                // Only keep interviews that haven't ended yet (Scheduled Time + 1 hour buffer)
+                // Sort by most recent application date
+                const sortedRecent = allApps
+                    .sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt))
+                    .slice(0, 5);
+
+                // 3. Fetch Interviews
+                const interviewRes = await axiosInstance.get(`/api/recruiter/my-interviews?email=${email}`);
                 const activeInterviews = (interviewRes.data || []).filter(item => {
                     const interviewDateTime = new Date(`${item.interviewDate}T${item.interviewTime}`);
                     const expiryTime = new Date(interviewDateTime.getTime() + 60 * 60000); 
@@ -47,7 +48,7 @@ const RecruiterDashboard = () => {
                     interviews: activeInterviews
                 });
             } catch (err) { 
-                console.error("Dashboard error:", err); 
+                console.error("Dashboard Sync Error:", err); 
             } finally { 
                 setLoading(false); 
             }
@@ -62,23 +63,23 @@ const RecruiterDashboard = () => {
     );
 
     const { stats, recent, interviews } = dashboardData;
+    
+    // Width calculation for progress bars (relative to total lifetime applicants)
     const getWidth = (count) => stats?.totalCandidates > 0 ? `${(count / stats.totalCandidates) * 100}%` : "0%";
 
     return (
-        <div className="animate-fade-in space-y-8 p-4 md:p-6 bg-slate-50 dark:bg-slate-950 min-h-screen">
+        <div className="animate-fade-in space-y-8 p-4 md:p-10 bg-slate-50 dark:bg-slate-950 min-h-screen font-sans">
             
-            {/* 🚀 1. LIVE INTERVIEW ALERT (Only shows if sessions are active/upcoming) */}
+            {/* 🚀 1. LIVE INTERVIEW ALERT */}
             {interviews.length > 0 && (
-                <div className="bg-indigo-600 rounded-[2rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-indigo-500/20 dark:shadow-none animate-in slide-in-from-top duration-500">
+                <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-indigo-500/20 dark:shadow-none animate-in slide-in-from-top duration-500">
                     <div className="flex items-center gap-6">
                         <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-md shrink-0">
                             <Video size={32} />
                         </div>
                         <div>
-                            <h3 className="text-xl font-black italic">Active Interview Session</h3>
-                            <p className="text-indigo-100 font-bold">
-                                Upcoming: {interviews[0].jobTitle}
-                            </p>
+                            <h3 className="text-xl font-black italic uppercase tracking-tighter">Active Session</h3>
+                            <p className="text-indigo-100 font-bold">Upcoming: {interviews[0].jobTitle}</p>
                             <div className="flex gap-4 mt-2">
                                 <p className="text-[10px] text-indigo-200 uppercase tracking-widest font-black flex items-center gap-1">
                                     <Calendar size={12} /> {interviews[0].interviewDate}
@@ -89,73 +90,93 @@ const RecruiterDashboard = () => {
                             </div>
                         </div>
                     </div>
-                    <a 
-                        href={interviews[0].meetingLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm flex items-center gap-3 hover:bg-indigo-50 transition-all shadow-lg active:scale-95 whitespace-nowrap"
-                    >
+                    <a href={interviews[0].meetingLink} target="_blank" rel="noreferrer" className="bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm flex items-center gap-3 hover:bg-indigo-50 transition-all shadow-lg active:scale-95 whitespace-nowrap">
                         JOIN MEETING ROOM <ExternalLink size={18} />
                     </a>
                 </div>
             )}
 
-            {/* 2. STATS ROW */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard icon="💼" value={stats?.activeJobs || 0} label="Active Jobs" trend="Live postings" trendUp={true} />
-                <StatCard icon="👥" value={stats?.totalCandidates || 0} label="Total Candidates" trend="All time" trendUp={true} />
-                <StatCard icon="🗓️" value={interviews.length} label="Live Interviews" trend="Active sessions" trendUp={true} />
+            {/* --- 2. TOP STATS ROW --- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard icon="💼" value={stats?.activeJobs || 0} label="Active Jobs" trend="Live" color="indigo" />
+                <StatCard icon="⏳" value={stats?.pending || 0} label="Pending Review" trend="Open Jobs" color="amber" />
+                <StatCard icon="🎉" value={stats?.hired || 0} label="Hired Total" trend="Success" color="emerald" />
+                <StatCard icon="👥" value={stats?.totalCandidates || 0} label="All Applicants" trend="Lifetime" color="slate" />
             </div>
 
-            {/* 3. FUNNEL & QUICK ACTIONS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-                    <h3 className="text-lg font-bold mb-6 dark:text-white">Recruitment Funnel</h3>
-                    <div className="space-y-6">
-                        <FunnelBar label="Total Applied" count={stats?.totalCandidates || 0} color="bg-indigo-400" width="100%" />
-                        <FunnelBar label="Pending Review" count={stats?.applied || 0} color="bg-amber-400" width={getWidth(stats?.applied)} />
-                        <FunnelBar label="Shortlisted" count={stats?.shortlisted || 0} color="bg-green-500" width={getWidth(stats?.shortlisted)} />
-                        <FunnelBar label="Rejected" count={stats?.rejected || 0} color="bg-red-500" width={getWidth(stats?.rejected)} />
+                {/* --- 3. THE RECRUITMENT FUNNEL (Logic Split) --- */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-10">
+                        <h3 className="text-xl font-black dark:text-white uppercase italic tracking-tighter">Performance Funnel</h3>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pipeline Efficiency</span>
+                    </div>
+                    
+                    <div className="space-y-8">
+                        {/* LIVE PIPELINE SECTION */}
+                        <div className="pb-6">
+                            <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                <Clock size={14}/> Live Pipeline (Active Jobs)
+                            </p>
+                            <FunnelBar label="Awaiting Review" count={stats?.pending || 0} color="bg-amber-400" width={getWidth(stats?.pending)} />
+                        </div>
+
+                        {/* FINALIZED OUTCOMES SECTION */}
+                        <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-8">
+                             <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                <CheckCircle size={14}/> Finalized Outcomes (Closed Jobs)
+                             </p>
+                             <div className="space-y-6">
+                                <FunnelBar label="Shortlisted" count={stats?.shortlisted || 0} color="bg-indigo-600" width={getWidth(stats?.shortlisted)} />
+                                <FunnelBar label="Hired / Selected" count={stats?.hired || 0} color="bg-emerald-500" width={getWidth(stats?.hired)} />
+                                <FunnelBar label="Rejected" count={stats?.rejected || 0} color="bg-rose-500" width={getWidth(stats?.rejected)} />
+                             </div>
+                        </div>
                     </div>
                 </div>
 
+                {/* --- 4. QUICK ACTIONS --- */}
                 <div className="flex flex-col gap-4">
-                    <h3 className="text-lg font-bold dark:text-white">Quick Actions</h3>
+                    <h3 className="text-lg font-black dark:text-white uppercase italic tracking-tighter ml-2">Quick Actions</h3>
                     <ActionCard icon={<Sparkles />} title="Post New Job" desc="Create requisition" colorClass="bg-indigo-50 text-indigo-600" onClick={() => navigate("/recruiter/home/post-jobs")} />
                     <ActionCard icon={<Edit />} title="Manage Jobs" desc="Edit active listings" colorClass="bg-amber-50 text-amber-600" onClick={() => navigate("/recruiter/home/edit-jobs")} />
                     <ActionCard icon={<Users />} title="Candidates" desc="Review applications" colorClass="bg-emerald-50 text-emerald-600" onClick={() => navigate("/recruiter/home", { state: { activeTab: "Candidates" } })} />
                 </div>
             </div>
 
-            {/* 4. RECENT APPLICATIONS TABLE */}
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <h3 className="text-lg font-bold mb-6 dark:text-white flex items-center gap-2">
-                    <Clock size={20} className="text-indigo-500" /> Recent Applications
-                </h3>
+            {/* --- 5. RECENT ACTIVITY TABLE --- */}
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600"><Clock size={20} /></div>
+                    <h3 className="text-lg font-black dark:text-white uppercase italic tracking-tighter">Recent Candidate Activity</h3>
+                </div>
+                
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="text-slate-400 border-b dark:border-slate-800 text-[10px] uppercase font-black tracking-widest">
-                                <th className="py-4 px-4">Student</th>
-                                <th className="py-4 px-4">Role</th>
-                                <th className="py-4 px-4">Status</th>
-                                <th className="py-4 px-4 text-right">Date</th>
+                                <th className="py-5 px-4">Student</th>
+                                <th className="py-5 px-4">Job Role</th>
+                                <th className="py-5 px-4">Status</th>
+                                <th className="py-5 px-4 text-right">Applied On</th>
                             </tr>
                         </thead>
-                        <tbody className="text-slate-700 dark:text-slate-300">
+                        <tbody className="text-slate-700 dark:text-slate-200">
                             {recent.length > 0 ? recent.map(app => (
-                                <tr key={app.id} className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                                    <td className="py-5 px-4 font-bold">{app.student.fullName}</td>
-                                    <td className="py-5 px-4 font-medium text-slate-500">{app.job.jobTitle}</td>
-                                    <td className="py-5 px-4">
-                                        <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-tighter ${app.status === 'SHORTLISTED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                <tr key={app.id} className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group">
+                                    <td className="py-6 px-4 font-bold">{app.student.fullName}</td>
+                                    <td className="py-6 px-4 text-slate-500 dark:text-slate-400 text-sm font-medium">{app.job.jobTitle}</td>
+                                    <td className="py-6 px-4">
+                                        <span className={`text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-tighter 
+                                            ${app.status === 'SELECTED' || app.status === 'HIRED' ? 'bg-emerald-100 text-emerald-700' : 
+                                              app.status === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                             {app.status}
                                         </span>
                                     </td>
-                                    <td className="py-5 px-4 text-right text-xs font-bold text-slate-400">{new Date(app.appliedAt).toLocaleDateString()}</td>
+                                    <td className="py-6 px-4 text-right text-xs font-bold text-slate-400">{new Date(app.appliedAt).toLocaleDateString()}</td>
                                 </tr>
                             )) : (
-                                <tr><td colSpan="4" className="text-center py-10 dark:text-slate-500 italic">No recent applications found.</td></tr>
+                                <tr><td colSpan="4" className="text-center py-12 text-slate-400 font-bold uppercase tracking-widest text-xs italic">No Recent Applications Found</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -165,38 +186,37 @@ const RecruiterDashboard = () => {
     );
 };
 
-// Sub-components with updated typography
-const StatCard = ({ icon, value, label, trend, trendUp }) => (
-    <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col gap-4 transition-all hover:shadow-md">
-        <div className="flex justify-between items-start">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-3xl">{icon}</div>
-            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${trendUp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{trend}</span>
+// --- HELPER UI COMPONENTS ---
+
+const StatCard = ({ icon, value, label, trend }) => (
+    <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-400 transition-all group">
+        <div className="flex justify-between items-start mb-6">
+            <div className="text-4xl group-hover:scale-110 transition-transform duration-300">{icon}</div>
+            <span className="text-[10px] font-black uppercase bg-slate-50 dark:bg-slate-800 text-slate-400 px-3 py-1 rounded-full tracking-widest">{trend}</span>
         </div>
-        <div>
-            <h3 className="text-4xl font-black text-slate-900 dark:text-white">{value}</h3>
-            <p className="text-sm text-slate-400 font-bold uppercase tracking-tight">{label}</p>
-        </div>
+        <h3 className="text-5xl font-black dark:text-white tracking-tighter leading-none mb-2">{value}</h3>
+        <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">{label}</p>
     </div>
 );
 
 const FunnelBar = ({ label, count, color, width }) => (
-    <div className="flex flex-col gap-2 group">
-        <div className="flex justify-between text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
+    <div className="space-y-3">
+        <div className="flex justify-between text-[11px] font-black uppercase tracking-widest dark:text-slate-400">
             <span>{label}</span>
-            <span className="text-slate-900 dark:text-white">{count}</span>
+            <span className="dark:text-white font-black">{count}</span>
         </div>
-        <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-1000 ease-out ${color}`} style={{ width }}></div>
+        <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
+            <div className={`h-full ${color} rounded-full transition-all duration-1000 ease-in-out shadow-sm`} style={{ width }}></div>
         </div>
     </div>
 );
 
 const ActionCard = ({ icon, title, desc, colorClass, onClick }) => (
-    <div onClick={onClick} className="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-5 cursor-pointer hover:border-indigo-400 transition-all group">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${colorClass}`}>{icon}</div>
+    <div onClick={onClick} className="p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-6 cursor-pointer hover:border-indigo-400 transition-all group shadow-sm active:scale-[0.97]">
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-all group-hover:rotate-12 ${colorClass}`}>{icon}</div>
         <div>
-            <h4 className="font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">{title}</h4>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">{desc}</p>
+            <h4 className="font-black dark:text-white uppercase italic tracking-tighter text-lg">{title}</h4>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{desc}</p>
         </div>
     </div>
 );

@@ -17,7 +17,7 @@ const PlacementInsightsDashboard = () => {
         setLoading(true);
         setError(null);
         // Fetching all active jobs from your Spring Boot controller
-        const response = await axiosInstance.get('/api/jobs/get-jobs');
+        const response = await axiosInstance.get('/api/jobs/get-all-jobs');
         setActiveJobs(response.data);
       } catch (err) {
         setError("Unable to load active jobs.");

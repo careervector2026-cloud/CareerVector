@@ -22,56 +22,69 @@ const PlacementInsightsUI = ({ activeJobs, currentUser }) => {
   const [isManualMode, setIsManualMode] = useState(false);
 
   const handleViewAnalysis = async (jobOrManualText, isManual = false) => {
-    try {
-      const id = isManual ? "manual" : jobOrManualText.id;
-      setAnalyzingId(id);
+  try {
+    const id = isManual ? "manual" : jobOrManualText.id;
+    setAnalyzingId(id);
+    
+    setSelectedAnalysis(null);
+    setDiagnosisData(null);
+    setAtsData(null);
+
+    const jobDescription = isManual ? jobOrManualText : jobOrManualText.description;
+    
+    // Logic: if manual (true) -> store_in_db is false
+    // If not manual (false) -> store_in_db is true
+    const storeInDbValue = !isManual;
+
+    const payload = {
+      resume_url: currentUser?.resumeUrl,
+      job_description: jobDescription
+    };
+
+    let endpoint = "";
+    if (activeSubTab === "Readiness") {
+      endpoint = '/api/jobs/job-readiness';
+      payload.github_url = currentUser?.githubUrl;
+      payload.leetcode_username = extractUsername(currentUser?.leetcodeUrl);
+      payload.student_id = currentUser?.rollNumber;
+      payload.college_name = currentUser?.clgName;
       
-      setSelectedAnalysis(null);
-      setDiagnosisData(null);
-      setAtsData(null);
+      // Add the boolean variable here
+      payload.store_in_db = storeInDbValue;
 
-      const jobDescription = isManual ? jobOrManualText : jobOrManualText.description;
+    } else if (activeSubTab === "Diagnosis") {
+      endpoint = '/api/jobs/failure-diagnosis';
+      payload.github_url = currentUser?.githubUrl;
+      payload.leetcode_username = extractUsername(currentUser?.leetcodeUrl);
+      payload.student_id = currentUser?.rollNumber;
+      payload.college_name = currentUser?.clgName;
       
-      const payload = {
-        resume_url: currentUser?.resumeUrl,
-        job_description: jobDescription
-      };
+      // Add the boolean variable here
+      payload.store_in_db = storeInDbValue;
 
-      let endpoint = "";
-      if (activeSubTab === "Readiness") {
-        endpoint = '/api/jobs/job-readiness';
-        payload.github_url = currentUser?.githubUrl;
-        payload.leetcode_username = extractUsername(currentUser?.leetcodeUrl);
-        payload.student_id=currentUser?.rollNumber;
-        payload.college_name=currentUser?.clgName;
-      } else if (activeSubTab === "Diagnosis") {
-        endpoint = '/api/jobs/failure-diagnosis';
-        payload.github_url = currentUser?.githubUrl;
-        payload.leetcode_username = extractUsername(currentUser?.leetcodeUrl);
-        payload.student_id=currentUser?.rollNumber;
-        payload.college_name=currentUser?.clgName;
-      } else {
-        endpoint = '/api/jobs/ats-score';
-      }
-
-      const response = await axiosInstance.post(endpoint, payload);
-
-      const metadata = isManual 
-        ? { jobTitle: "Custom Analysis", company: "User Provided Text" } 
-        : { jobTitle: jobOrManualText.jobTitle, company: jobOrManualText.recruiter?.companyName };
-
-      if (activeSubTab === "Readiness") setSelectedAnalysis({ ...metadata, ...response.data });
-      else if (activeSubTab === "Diagnosis") setDiagnosisData({ ...metadata, ...response.data });
-      else if (activeSubTab === "ATS") setAtsData({ ...metadata, ...response.data });
-
-      setShowModal(true);
-    } catch (err) {
-      console.error("AI Error:", err);
-      alert("Analysis failed. Ensure Spring Boot and FastAPI are running.");
-    } finally {
-      setAnalyzingId(null);
+    } else {
+      endpoint = '/api/jobs/ats-score';
+      // ATS remains as it was (no store_in_db added here)
     }
-  };
+
+    const response = await axiosInstance.post(endpoint, payload);
+
+    const metadata = isManual 
+      ? { jobTitle: "Custom Analysis", company: "User Provided Text" } 
+      : { jobTitle: jobOrManualText.jobTitle, company: jobOrManualText.recruiter?.companyName };
+
+    if (activeSubTab === "Readiness") setSelectedAnalysis({ ...metadata, ...response.data });
+    else if (activeSubTab === "Diagnosis") setDiagnosisData({ ...metadata, ...response.data });
+    else if (activeSubTab === "ATS") setAtsData({ ...metadata, ...response.data });
+
+    setShowModal(true);
+  } catch (err) {
+    console.error("AI Error:", err);
+    alert("Analysis failed. Ensure Spring Boot and FastAPI are running.");
+  } finally {
+    setAnalyzingId(null);
+  }
+};
 
   const extractUsername = (url) => {
     if (!url) return "unknown";

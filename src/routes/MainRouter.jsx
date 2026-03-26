@@ -17,6 +17,7 @@ import PostJobs from "../pages/Recruiters/components/PostJobs.jsx";
 import EditJobs from "../pages/Recruiters/components/EditJobs.jsx";
 import ClosedJobs from "../pages/Recruiters/components/ClosedJobs.jsx";
 import Candidates from "../pages/Recruiters/components/Candidates.jsx";
+import HiredCandidates from "../pages/Recruiters/components/HiredCandidates.jsx";
 // Admin Pages
 import AdminLogin from "../pages/Admins/AdminLogin.jsx";
 import AdminSignup from "../pages/Admins/AdminSignup.jsx";
@@ -54,6 +55,7 @@ const MainRouter = () => {
         <Route path="/recruiter/home/edit-jobs" element={<EditJobs/>} />
         <Route path="/recruiter/home/close-jobs" element={<ClosedJobs/>} />
         <Route path="/recruiter/home/candidates" element={<Candidates />} />
+        <Route path="/recruiter/home/hired" element={<HiredCandidates />} />
         {/* Add more recruiter routes here later, e.g., /recruiter/post-job */}
       </Route>
 
